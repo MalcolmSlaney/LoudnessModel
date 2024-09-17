@@ -1226,12 +1226,15 @@ def main_tv2018(filename_or_sound: Union[str, np.ndarray],
     plt.ylabel('Loudness [sone]')
     plt.legend()
     plt.show()
-
+    # save plot to results folder
+    if output_path is None:
+        output_path = 'results'
+    os.makedirs(output_path, exist_ok = True)
+    figure_filename = os.path.join(output_path, 'loudness_plot.png')
+                    
     # Writing results to text file
     output_filename = f"{file_name} {db_max} dB calibration level TVL 2018.txt"
     if output_path:
-        # if output path exists, put final results into output folder
-        os.makedirs(output_path, exist_ok=True)
         full_output_path = os.path.join(output_path, output_filename)
     else:
         full_output_path = output_filename
