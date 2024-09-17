@@ -24,6 +24,8 @@ db_max: The root-mean-square sound pressure level of a full-scale sinusoid, i.e.
 
 filename_filter: The filename of the filter that specifies the transfer function through the outer and middle ear. Use ‘ff_32000.mat’ for free-field presentation, ‘df_32000.mat’ for diffuse-field presentation or ‘ed_32000.mat’ for middle-ear only (when the signal is picked up at the eardrum, or headphones with a “flat” frequency response at the eardrum are used).
 
+output_path: optional path to an output folder. If not specified, a 'results' folder will be made to store both plots and the text files with results.
+
 rate: sampling rate of the signal, can be specified. If providing your own array data for the signal, be sure to specify rate. 
 
 ## III. OUTPUTS OF THE PROGRAM
