@@ -1176,7 +1176,7 @@ def main_tv2018(filename_or_sound: Union[str, np.ndarray],
                                         "(e.g., 'synthesize_{}khz_{}ms').")
             data, rate = read_and_resample(filename_or_sound)
     elif isinstance(filename_or_sound, np.ndarray):
-        file_name = "User Input Audio Data Array"
+        file_name = "user_input_signal"
         if not rate:
             raise ValueError("Rate must be specified when providing sound data directly.")
         data = filename_or_sound
@@ -1229,13 +1229,13 @@ def main_tv2018(filename_or_sound: Union[str, np.ndarray],
     if output_path is None:
         output_path = 'results'
     os.makedirs(output_path, exist_ok = True)
-    figure_name = f"{file_name} loudness_plot.png"
+    figure_name = f"{file_name}_{db_max}dB_loudness_plot.png"
     figure_filename = os.path.join(output_path, figure_name)
     plt.savefig(figure_filename)
     plt.show()
                     
     # Writing results to text file
-    output_filename = f"{file_name} {db_max} dB calibration level TVL 2018.txt"
+    output_filename = f"{file_name}_{db_max}dB_calibration_level_TVL_2018.txt"
     if output_path:
         full_output_path = os.path.join(output_path, output_filename)
     else:
