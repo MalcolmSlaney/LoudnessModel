@@ -29,19 +29,20 @@ output_path: optional path to an output folder. If not specified, a 'results' fo
 rate: sampling rate of the signal, can be specified. If providing your own array data for the signal, be sure to specify rate. 
 
 ## III. OUTPUTS OF THE PROGRAM
-The function returns three vectors, each of them starting at t = 0 ms and having a step size of 1 ms. The first vector is the instantaneous loudness, the second is the short-term loudness, and the third is long-term loudness, all in sone. In addition, the program creates a text file in the subdirectory out, having the same filename as specified in filenameSound and the extension ‘.txt’. It contains seven columns, specifying the time in ms, instantaneous loudness, short-term loudness and long-term loudness in both sone and loudness level in phon. Finally, the program creates a Matplotlib figure with a black line representing instantaneous loudness, a blue line representing short-term loudness and a red line representing long-term loudness, as shown here: 
+The function returns three vectors, each of them starting at t = 0 ms and having a step size of 1 ms. The first vector is the instantaneous loudness, the second is the short-term loudness, and the third is long-term loudness, all in sone. In addition, the program creates a text file in the subdirectory out, having the same filename as specified in filenameSound and the extension ‘.txt’. It contains seven columns, specifying the time in ms, instantaneous loudness, short-term loudness and long-term loudness in both sone and loudness level in phon. Finally, the program creates a Matplotlib figure with a black line representing instantaneous loudness, a blue line representing short-term loudness and a red line representing long-term loudness, as shown below: 
 
-
-
-
-## IV. EXAMPLES
-
+### EXAMPLE
 filename_or_sound = 'synthesize_1khz_100ms' 
 db_max = 50
 filename_filter = 'transfer functions/ff_32000.mat'
 loudness, short_term_loudness, long_term_loudness = main_tv2018(filename_or_sound, db_max, filename_filter)
 
-Running the code above would calculate loudness for the synthesized 1khz 100ms audio data. The signal is a 100-ms segment of a 1000-Hz tone with a level 10 dB below the full-scale level. If a full-scale sinusoid has a level of 50 dB SPL (as specified by the “50” in the example above), the signal in the example wav file would have a level of 40 dB SPL and the outputs show the loudness of a 1-kHz pure tone with a duration of 100 ms and a level of 40 dB SPL. To calculate the loudness of a 1-kHz pure tone with a duration of 100 ms and a level of X dB SPL, specify the full-scale level as X+10.
+Outputs: 
+'results/synthesize_1khz_100ms 50 dB calibration level TVL 2018.txt' text file results. 
+'results/synthesize_1khz_100ms loudness_plot' 
+
+
+Running the code above calculates loudness for the synthesized 1khz 100ms audio data. The signal is a 100-ms segment of a 1000-Hz tone with a level 10 dB below the full-scale level. If a full-scale sinusoid has a level of 50 dB SPL (as specified by the “50” in the example above), the signal in the example wav file would have a level of 40 dB SPL and the outputs show the loudness of a 1-kHz pure tone with a duration of 100 ms and a level of 40 dB SPL. To calculate the loudness of a 1-kHz pure tone with a duration of 100 ms and a level of X dB SPL, specify the full-scale level as X+10.
 
 ## V. ADDED TESTS AND OPTIMIZATION
 
