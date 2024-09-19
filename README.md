@@ -2,18 +2,20 @@
 Jeremy JX Hsiao, Malcolm Slaney </br>
 Based on MATLAB Loudness Model provided by Brian C.J. Moore, Brian R. Glasberg and Josef Schlittenlacher
 
-jeremyjxhsiao@gmail.com, malcolmslaney@gmail.com </br>
+jeremyjxhsiao@gmail.com, malcolm@ieee.org </br>
 bcjm@cam.ac.uk, bg12@cam.ac.uk, js2251@cam.ac.uk
 
 ## I. INTRODUCTION
+This code implements a model of time-varying auditory loudness.
 The Python code is based on an original implementation in MATLAB, translated using various Python libraries (NumPy, SciPy, JAX etc.)
-It provided calculates loudness according to the model described by Moore et 
+The code calculates loudness according to the model described by Moore et 
 al. (2016), but with the modified time constants described by Moore et al. (2018). It was
 developed from C code for the same model, and Matlab code written for ANSI S3.4-2007,
 based on Moore et al. (1997) and Glasberg and Moore (2006) and ISO 532-2 (2017), 
 based on Moore and Glasberg (2007). The source code is provided free for any research purposes.
 
-Link to the original MATLAB code is the first download on this page: https://www.psychol.cam.ac.uk/hearing#programs
+A link to the original MATLAB code is the first download on this page: 
+https://www.psychol.cam.ac.uk/hearing#programs
 
 ## II. RUNNING THE PROGRAM
 The function main_tv2018 takes five parameters: 
@@ -24,32 +26,40 @@ The function main_tv2018 takes five parameters:
 
 **db_max**: The root-mean-square sound pressure level of a full-scale sinusoid, i.e. a sinusoid whose peak amplitude is 1 in Matlab. This allows calibration of absolute level. A range of 0 to 40 dB is considered quiet to very quiet, while 60 to 80 dB is generally described as noisy. A default value for this could be 50. 
 
-**filename_filter**: The filename of the filter that specifies the transfer function through the outer and middle ear. Use ‘ff_32000.mat’ for free-field presentation, 
+**filter_filename**: The filename of the filter that specifies the transfer function through the outer and middle ear. Use ‘ff_32000.mat’ for free-field presentation, 
 ‘df_32000.mat’ for diffuse-field presentation or ‘ed_32000.mat’ for middle-ear only (when the signal is picked up at the eardrum, or headphones with a “flat” frequency response at the eardrum are used).
 
-**output_path**:: optional path to an output folder. If not specified, a 'results' folder will be made to store both plots and the text files with results.
+**rate**: The sampling rate of the signal, can be specified. If providing your own array data for the signal, be sure to specify rate. 
 
-**rate**: sampling rate of the signal, can be specified. If providing your own array data for the signal, be sure to specify rate. 
+**debug_plot**: Whether to produce a short-term versus long-term loudness plot.
+
+**debug_plot_filename**: Where to store the loudness plot, if **debug_plot** is True.
+
+**debug_summary_filename**: Where to store a textual summary of the loudness.
+
 
 ## III. OUTPUTS OF THE PROGRAM
-The function returns three vectors, each of them starting at t = 0 ms and having a step size of 1 ms. The first vector is the instantaneous loudness, the second is the short-term loudness, and the third is long-term loudness, all in sone. In addition, the program creates a text file in the subdirectory out, having the same filename as specified in filenameSound and the extension ‘.txt’. It contains seven columns, specifying the time in ms, instantaneous loudness, short-term loudness and long-term loudness in both sone and loudness level in phon. Finally, the program creates a Matplotlib figure with a black line representing instantaneous loudness, a blue line representing short-term loudness and a red line representing long-term loudness, as shown below: 
+The function returns three vectors, each of them starting at t = 0 ms and having a step size of 1 ms. The first vector is the instantaneous loudness, the second is the short-term loudness, and the third is long-term loudness, all in sone. 
+Optionally, the program creates a text file if the debug_summary_filename argument is not None.
+It contains seven columns, specifying the time in ms, instantaneous loudness, short-term loudness and long-term loudness in both sone and loudness level in phon. 
+Optionally, the program creates a Matplotlib figure with a black line representing instantaneous loudness, a blue line representing short-term loudness and a red line representing long-term loudness, as shown below: 
 
 **EXAMPLE** </br>
 
 ```
 filename_or_sound = 'synthesize_1khz_100ms'
 db_max = 50
-filename_filter = 'transfer functions/ff_32000.mat'
-loudness, short_term_loudness, long_term_loudness = main_tv2018(filename_or_sound, db_max, filename_filter)
+filter_filename = 'transfer functions/ff_32000.mat'
+loudness, short_term_loudness, long_term_loudness = main_tv2018(filename_or_sound, db_max, filter_filename, debug_plot=True, debug_plot_filename='results/synthesize_1khz_100ms_50dB_loudness_plot.png', debug_summary_filename='results/synthesize_1khz_100ms_50dB_calibration_level_TVL_2018.txt')
 ```
 
 Running the code above calculates loudness for the synthesized 1khz 100ms audio data. The signal is a 100-ms segment of a 1000-Hz tone with a level 10 dB below the full-scale level. If a full-scale sinusoid has a level of 50 dB SPL (as specified by the “50” in the example above), the signal in the example wav file would have a level of 40 dB SPL and the outputs show the loudness of a 1-kHz pure tone with a duration of 100 ms and a level of 40 dB SPL. To calculate the loudness of a 1-kHz pure tone with a duration of 100 ms and a level of X dB SPL, specify the full-scale level as X+10. 
 
 **OUTPUTS:** </br>
-'results/synthesize_1khz_100ms_50dB_calibration_level_TVL_2018.txt' text file results. </br>
+With the arguments above the main_tv2018 function creates two files: a textual summary and a summary plot:
+
 [Download the generated text file here.](results/synthesize_1khz_100ms_50dB_calibration_level_TVL_2018.txt)
 
-'results/synthesize_1khz_100ms_50dB_loudness_plot': 
 ![Loudness Plot](results/synthesize_1khz_100ms_50dB_loudness_plot.png)
 
 

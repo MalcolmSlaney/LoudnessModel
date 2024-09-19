@@ -1077,20 +1077,20 @@ def shortterm_loudness_to_longterm_loudness(Nst: np.ndarray) -> np.ndarray:
     return Nlt
 
 
-def sound_field_to_cochlea(s: np.ndarray, filename_filter: str) -> np.ndarray:
+def sound_field_to_cochlea(s: np.ndarray, filter_filename: str) -> np.ndarray:
     """
     Applies a filter to the sound field data to simulate cochlear processing.
 
     Args:
        s: The input sound field data, a 2D array with two columns for stereo signals.
-       filename_filter: The filename of the filter coefficients (MAT-file).
+       filter_filename: The filename of the filter coefficients (MAT-file).
 
     Returns:
        out: The filtered output signal.
     """
 
     # Load the filter coefficients from the MAT file
-    filter_data = loadmat(f'{filename_filter}')
+    filter_data = loadmat(f'{filter_filename}')
     # Assuming vecCoefficients is a 1D array
     vec_coefficients = filter_data['vecCoefficients'].flatten()
 
@@ -1137,8 +1137,9 @@ def synthesize_sound(frequency: float, duration: float, rate: int) -> np.ndarray
 
 
 def main_tv2018(filename_or_sound: Union[str, np.ndarray],
-                db_max: float, filename_filter: str,
-                output_path: str = None, rate: int = None,
+                db_max: float, 
+                filter_filename: str,
+                rate: int = None,
                 debug_plot: bool = False,
                 debug_plot_filename: Optional[str] = None,
                 debug_summary_filename: Optional[str] = None):
@@ -1151,7 +1152,7 @@ def main_tv2018(filename_or_sound: Union[str, np.ndarray],
         db_max: The root-mean-square sound pressure level of a full-scale sinusoid,
                 i.e. a sinusoid whose peak amplitude is 1 in Matlab.
 
-        filename_filter: The filename of the FIR filter.
+        filter_filename: The filename of the FIR filter.
         rate: Sampling frequency. If not provided, it will be determined from the file.
         debug_plot: Whether to show a summary plot
         debug_plot_filename: If plotting, where to store the summary plot.
@@ -1188,7 +1189,7 @@ def main_tv2018(filename_or_sound: Union[str, np.ndarray],
         data = filename_or_sound
 
     # Filter the sound field to cochlea
-    data = sound_field_to_cochlea(data, filename_filter)
+    data = sound_field_to_cochlea(data, filter_filename)
 
     # Calculate instantaneous specific loudness
     instantaneous_specific_loudness_left, instantaneous_specific_loudness_right = \
@@ -1233,12 +1234,8 @@ def main_tv2018(filename_or_sound: Union[str, np.ndarray],
       plt.ylabel('Loudness [sone]')
       plt.legend()
       # save plot to results folder
-      if output_path is None:
-          output_path = 'results'
-      os.makedirs(output_path, exist_ok = True)
-      figure_name = f"{file_name}_{db_max}dB_loudness_plot.png"
-      figure_filename = os.path.join(output_path, figure_name)
-      plt.savefig(figure_filename)
+      if debug_plot_filename:
+        plt.savefig(debug_plot_filename)
                     
     # Writing results to text file
     if debug_summary_filename:
@@ -1246,7 +1243,7 @@ def main_tv2018(filename_or_sound: Union[str, np.ndarray],
           fid.write(f"{debug_summary_filename}\n\n")
           fid.write(f"Calibration level:      {db_max} "
                     f"dB SPL (RMS level of a full-scale sinusoid)\n")
-          fid.write(f"Filename of FIR filter: {filename_filter}\n\n")
+          fid.write(f"Filename of FIR filter: {filter_filename}\n\n")
           fid.write(f"Maximum of long-term loudness:  "
                     f"{np.max(long_term_loudness):9.2f} sone\n")
           fid.write(f"                                "
