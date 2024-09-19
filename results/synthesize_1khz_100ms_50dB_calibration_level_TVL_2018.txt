@@ -1,4 +1,4 @@
-synthesize_1khz_100ms 50 dB calibration level TVL 2018.txt
+results/synthesize_1khz_100ms_50dB_calibration_level_TVL_2018.txt
 
 Calibration level:      50 dB SPL (RMS level of a full-scale sinusoid)
 Filename of FIR filter: transfer functions/ff_32000.mat

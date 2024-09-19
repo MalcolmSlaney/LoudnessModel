@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from typing import Union, List, Tuple
+from typing import List, Optional, Tuple, Union
 from scipy.io import wavfile
 from scipy.io import loadmat
 from scipy.signal import resample
@@ -1138,7 +1138,10 @@ def synthesize_sound(frequency: float, duration: float, rate: int) -> np.ndarray
 
 def main_tv2018(filename_or_sound: Union[str, np.ndarray],
                 db_max: float, filename_filter: str,
-                output_path: str = None, rate: int = None):
+                output_path: str = None, rate: int = None,
+                debug_plot: bool = False,
+                debug_plot_filename: Optional[str] = None,
+                debug_summary_filename: Optional[str] = None):
     """
     Calculate loudness according to Moore, Glasberg & Schlittenlacher (2016).
 
@@ -1150,6 +1153,9 @@ def main_tv2018(filename_or_sound: Union[str, np.ndarray],
 
         filename_filter: The filename of the FIR filter.
         rate: Sampling frequency. If not provided, it will be determined from the file.
+        debug_plot: Whether to show a summary plot
+        debug_plot_filename: If plotting, where to store the summary plot.
+        debug_summary_filename: If non-null, where to put the text summary
 
     Returns:
         Calculated loudness metrics: short-term, long-term, highest loudness value
@@ -1217,58 +1223,54 @@ def main_tv2018(filename_or_sound: Union[str, np.ndarray],
         short_term_loudness_left.flatten() + short_term_loudness_right.flatten()
 
     # Plotting the results
-    plt.figure()
-    plt.plot(range(len(short_term_loudness)), short_term_loudness,
-             'b-', label='Short-term loudness')
-    plt.plot(range(len(long_term_loudness)), long_term_loudness,
-             'r-', label='Long-term loudness')
-    plt.xlabel('time [ms]')
-    plt.ylabel('Loudness [sone]')
-    plt.legend()
-    # save plot to results folder
-    if output_path is None:
-        output_path = 'results'
-    os.makedirs(output_path, exist_ok = True)
-    figure_name = f"{file_name}_{db_max}dB_loudness_plot.png"
-    figure_filename = os.path.join(output_path, figure_name)
-    plt.savefig(figure_filename)
-    plt.show()
+    if debug_plot:
+      plt.figure()
+      plt.plot(range(len(short_term_loudness)), short_term_loudness,
+              'b-', label='Short-term loudness')
+      plt.plot(range(len(long_term_loudness)), long_term_loudness,
+              'r-', label='Long-term loudness')
+      plt.xlabel('time [ms]')
+      plt.ylabel('Loudness [sone]')
+      plt.legend()
+      # save plot to results folder
+      if output_path is None:
+          output_path = 'results'
+      os.makedirs(output_path, exist_ok = True)
+      figure_name = f"{file_name}_{db_max}dB_loudness_plot.png"
+      figure_filename = os.path.join(output_path, figure_name)
+      plt.savefig(figure_filename)
                     
     # Writing results to text file
-    output_filename = f"{file_name}_{db_max}dB_calibration_level_TVL_2018.txt"
-    if output_path:
-        full_output_path = os.path.join(output_path, output_filename)
-    else:
-        full_output_path = output_filename
-    with open(full_output_path, 'w') as fid:
-        fid.write(f"{output_filename}\n\n")
-        fid.write(f"Calibration level:      {db_max} "
-                  f"dB SPL (RMS level of a full-scale sinusoid)\n")
-        fid.write(f"Filename of FIR filter: {filename_filter}\n\n")
-        fid.write(f"Maximum of long-term loudness:  "
-                  f"{np.max(long_term_loudness):9.2f} sone\n")
-        fid.write(f"                                "
-                  f"{np.max(sone_to_phon_tv2015(long_term_loudness)):9.2f} phon\n")
-        fid.write(f"Maximum of short-term loudness: "
-                  f"{np.max(short_term_loudness):9.2f} sone\n")
-        fid.write(f"                                "
-                  f"{np.max(sone_to_phon_tv2015(short_term_loudness)):9.2f} phon\n\n")
-        fid.write("Loudness over time\n")
-        fid.write("1st column: time in milliseconds\n")
-        fid.write("2nd column: short-term loudness in sone\n")
-        fid.write("3rd column: short-term loudness level in phon\n")
-        fid.write("4th column: long-term loudness in sone\n")
-        fid.write("5th column: long-term loudness level in phon\n\n")
-        fid.write("   time   short-t. loudness    long-t. loudness\n")
-        fid.write("     ms      sone      phon      sone      phon\n")
-        for i in range(len(long_term_loudness)):
-            fid.write(f"{i:7.0f} {short_term_loudness[i]:9.2f} "
-                      f"{sone_to_phon_tv2015(short_term_loudness[i]):9.1f} "
-                      f"{long_term_loudness[i]:9.2f} "
-                      f"{sone_to_phon_tv2015(long_term_loudness[i]):9.1f}\n")
-        fid.write(f"max     {np.max(short_term_loudness):9.2f} "
-                  f"{np.max(sone_to_phon_tv2015(short_term_loudness)):9.1f} "
-                  f"{np.max(long_term_loudness):9.2f} "
-                  f"{np.max(sone_to_phon_tv2015(long_term_loudness)):9.1f}\n")
+    if debug_summary_filename:
+      with open(debug_summary_filename, 'w') as fid:
+          fid.write(f"{debug_summary_filename}\n\n")
+          fid.write(f"Calibration level:      {db_max} "
+                    f"dB SPL (RMS level of a full-scale sinusoid)\n")
+          fid.write(f"Filename of FIR filter: {filename_filter}\n\n")
+          fid.write(f"Maximum of long-term loudness:  "
+                    f"{np.max(long_term_loudness):9.2f} sone\n")
+          fid.write(f"                                "
+                    f"{np.max(sone_to_phon_tv2015(long_term_loudness)):9.2f} phon\n")
+          fid.write(f"Maximum of short-term loudness: "
+                    f"{np.max(short_term_loudness):9.2f} sone\n")
+          fid.write(f"                                "
+                    f"{np.max(sone_to_phon_tv2015(short_term_loudness)):9.2f} phon\n\n")
+          fid.write("Loudness over time\n")
+          fid.write("1st column: time in milliseconds\n")
+          fid.write("2nd column: short-term loudness in sone\n")
+          fid.write("3rd column: short-term loudness level in phon\n")
+          fid.write("4th column: long-term loudness in sone\n")
+          fid.write("5th column: long-term loudness level in phon\n\n")
+          fid.write("   time   short-t. loudness    long-t. loudness\n")
+          fid.write("     ms      sone      phon      sone      phon\n")
+          for i in range(len(long_term_loudness)):
+              fid.write(f"{i:7.0f} {short_term_loudness[i]:9.2f} "
+                        f"{sone_to_phon_tv2015(short_term_loudness[i]):9.1f} "
+                        f"{long_term_loudness[i]:9.2f} "
+                        f"{sone_to_phon_tv2015(long_term_loudness[i]):9.1f}\n")
+          fid.write(f"max     {np.max(short_term_loudness):9.2f} "
+                    f"{np.max(sone_to_phon_tv2015(short_term_loudness)):9.1f} "
+                    f"{np.max(long_term_loudness):9.2f} "
+                    f"{np.max(sone_to_phon_tv2015(long_term_loudness)):9.1f}\n")
 
     return loudness, short_term_loudness, long_term_loudness
