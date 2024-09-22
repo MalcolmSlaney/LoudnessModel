@@ -74,17 +74,24 @@ equivalent rectangular bandwidth of the auditory filter, calculate binaural inhi
 
 ## REFERENCES
 
-Glasberg, B. R., and Moore, B. C. J. (2006). "Prediction of absolute thresholds and equal- loudness contours using a modified loudness model," J. Acoust. Soc. Am. 120, 585- 588.
+Glasberg, B. R., and Moore, B. C. J. (2006). "Prediction of absolute thresholds 
+and equal-loudness contours using a modified loudness model," J. Acoust. Soc. Am. 120, 585-588 
+[[link](https://pubmed.ncbi.nlm.nih.gov/16938942/)].
 
-ISO 532-2 (2017). Acoustics - Methods for calculating loudness - Part 2: Moore-Glasberg method (International Organization for Standardization, Geneva).
+ISO 532-2 (2017). Acoustics - Methods for calculating loudness - Part 2: Moore-Glasberg method (International Organization for Standardization, Geneva) [[link](https://www.iso.org/standard/63078.html)].
 
-Moore, B. C. J., and Glasberg, B. R. (2007). "Modeling binaural loudness," J. Acoust. Soc. Am. 121, 1604-1612.
+Moore, B. C. J., and Glasberg, B. R. (2007). "Modeling binaural loudness," 
+J. Acoust. Soc. Am. 121, 1604-1612 
+[[link](https://pubs.aip.org/asa/jasa/article-abstract/121/3/1604/952165/Modeling-binaural-loudness)].
 
-Moore, B. C. J., Glasberg, B. R., and Baer, T. (1997). "A model for the prediction of thresholds, loudness and partial loudness," J. Audio Eng. Soc. 45, 224-240.
+Moore, B. C. J., Glasberg, B. R., and Baer, T. (1997). "A model for the prediction of thresholds, loudness and partial loudness," J. Audio Eng. Soc. 45, 224-240 [[link](https://aes2.org/publications/elibrary-page/?id=10272)].
 
-Moore, B. C. J., Glasberg, B. R., Varathanathan, A., and Schlittenlacher, J. (2016). "A loudness model for time-varying sounds incorporating binaural inhibition," Trends Hear. 20, 1-16.
+Moore, B. C. J., Glasberg, B. R., Varathanathan, A., and Schlittenlacher, J. (2016). 
+"A loudness model for time-varying sounds incorporating binaural inhibition," 
+Trends Hear. 20, 1-16i [[link](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5318944/)].
 
-Moore, B. C. J., Jervis, M., Harries, L., and Schlittenlacher, J. (2018). "Testing and refining a loudness model for time-varying sounds incorporating binaural inhibition," J. Acoust. Soc. Am. 143, 1504-1513.
+Moore, B. C. J., Jervis, M., Harries, L., and Schlittenlacher, J. (2018). "Testing and refining a loudness model for time-varying sounds incorporating binaural inhibition," J. Acoust. Soc. Am. 143, 1504-1513
+[[link](https://pubmed.ncbi.nlm.nih.gov/29604698/)].
 
 
 
