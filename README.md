@@ -88,7 +88,7 @@ Moore, B. C. J., Glasberg, B. R., and Baer, T. (1997). "A model for the predicti
 
 Moore, B. C. J., Glasberg, B. R., Varathanathan, A., and Schlittenlacher, J. (2016). 
 "A loudness model for time-varying sounds incorporating binaural inhibition," 
-Trends Hear. 20, 1-16i [[link](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5318944/)].
+Trends Hear. 20, 1-16 [[link](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5318944/)].
 
 Moore, B. C. J., Jervis, M., Harries, L., and Schlittenlacher, J. (2018). "Testing and refining a loudness model for time-varying sounds incorporating binaural inhibition," J. Acoust. Soc. Am. 143, 1504-1513
 [[link](https://pubmed.ncbi.nlm.nih.gov/29604698/)].
