@@ -534,7 +534,7 @@ def get_pl(f: Union[List[float], np.ndarray],
         X: Input levels.
 
     Returns:
-        out Lower slope parameters for the auditory filter.
+        out: Lower slope parameters for the auditory filter.
     """
     p_f = get_p(f)  # Slope parameter for given frequencies
     p_1000 = get_p(1000)  # Slope parameter at 1000 Hz
