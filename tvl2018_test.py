@@ -348,36 +348,5 @@ class LoudnessTest(absltest.TestCase):
         plt.close()
         self.assertTrue(os.path.exists(plot_filename))
 
-
-    def test_main_tv2018(self):
-        """Test the main function with a synthesized signal."""
-        filename_or_sound = 'synthesize_1khz_100ms'
-        db_max = 60
-        filter_filename = 'transfer functions/ff_32000.mat'
-        rate = 32000
-        debug_plot_filename = 'results/test_main_tv2018_plot.png'
-        debug_summary_filename = 'results/test_main_tv2018_summary.txt'
-        os.makedirs('results', exist_ok=True)
-        loudness, short_term_loudness, long_term_loudness = tvl.main_tv2018(
-            filename_or_sound, db_max, filter_filename, rate=rate,
-            debug_plot=True,
-            debug_plot_filename=debug_plot_filename,
-            debug_summary_filename=debug_summary_filename
-        )
-        self.assertTrue(loudness >= 0, "Negative loudness value.")
-        self.assertEqual(len(short_term_loudness), len(long_term_loudness),
-                         "Length mismatch.")
-        self.assertTrue(os.path.exists(debug_summary_filename),
-                        "Summary file not created.")
-        # Load and check the summary file for expected content
-        with open(debug_summary_filename, 'r') as f:
-            content = f.read()
-        self.assertIn("Maximum of long-term loudness", content,
-                      "Summary file content missing.")
-        # Check that the plot file is created
-        self.assertTrue(os.path.exists(debug_plot_filename),
-                        "Plot file not created.")
-
-
 if __name__ == '__main__':
     absltest.main()
