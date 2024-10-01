@@ -338,11 +338,11 @@ def interpolation(xx: Union[List[float], np.ndarray],
                                    fill_value="extrapolate")
         elif method == 'pchip':
             interpolate = PchipInterpolator(xx, yy, extrapolate=True)
-        else:
+        else: # Code never reaches here, but just in case 
             interpolate = interp1d(xx, yy, kind=method,
                                    fill_value="extrapolate")
         out = interpolate(x)
-    else:
+    else: # Code also doesn't reach here 
         # Repeat yy for all x if there's only one point
         out = np.full_like(x, yy)
 
@@ -534,7 +534,7 @@ def get_pl(f: Union[List[float], np.ndarray],
         X: Input levels.
 
     Returns:
-        out Lower slope parameters for the auditory filter.
+        out: Lower slope parameters for the auditory filter.
     """
     p_f = get_p(f)  # Slope parameter for given frequencies
     p_1000 = get_p(1000)  # Slope parameter at 1000 Hz
@@ -647,7 +647,8 @@ def excitation_to_specific_loudness_binaural_025(
     return out
 
 
-# This function is not used in this project
+# This function is not used in this project, but was included in the MATLAB code
+# Shows how to convert frequency values in Hz to Cam
 def frequency_to_erb_number(in_frequencies: Union[List[float], np.ndarray]) -> np.ndarray:
     """
     Convert frequency values in Hz to Cam.
@@ -726,6 +727,7 @@ def output_power_at_erb_numbers_025(input_levels: Union[List[float], np.ndarray]
 
     return excitation
 
+# This function is also never used, only sone to phon is called. 
 
 def phon_to_sone_tv2015(input: Union[List[float], np.ndarray]) -> np.ndarray:
     """
@@ -1032,6 +1034,7 @@ def filtered_signal_to_monaural_instantaneous_specific_loudness(
         f_left_relevant, l_left_relevant, f_right_relevant, l_right_relevant = \
             signal_segment_to_spectrum(segment, rate, db_max, w_hann, v_limiting_indices)
 
+        # If left has no relevant spectral components
         if l_left_relevant.size == 0:
             specific_loudness_left = np.zeros(150)
         else:
@@ -1040,6 +1043,7 @@ def filtered_signal_to_monaural_instantaneous_specific_loudness(
             specific_loudness_left = \
                 excitation_to_specific_loudness_binaural_025(excitation_levels_left)
 
+        # If right has no relevant spectral components
         if l_right_relevant.size == 0:
             specific_loudness_right = np.zeros(150)
         else:
