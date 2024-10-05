@@ -5,7 +5,6 @@ from scipy.io import wavfile
 from scipy.io import loadmat
 from scipy.signal import resample
 from scipy.signal import convolve
-from scipy.fft import fft
 from scipy.interpolate import interp1d, PchipInterpolator
 import matplotlib.pyplot as plt
 
@@ -811,7 +810,7 @@ def signal_segment_to_spectrum(data: np.ndarray,
     i_combined_fft = np.zeros((len(f), 2))
     for i in range(6):
         for j in range(2):
-            fft_result = fft(ws[:, i, j])
+            fft_result = np.fft.fft(ws[:, i, j])
             magnitude_spectrum = np.abs(fft_result / npts)
             magnitude_spectrum = magnitude_spectrum[:npts // 2 + 1]
             # Amplitudes of sine components
