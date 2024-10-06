@@ -72,6 +72,13 @@ With the arguments above the main_tv2018 function creates two files: a textual s
 You will find many useful subroutines in the main directory and subdirectory ‘functions’. They may be used to calculate excitation patterns, perform a Fast Fourier Transform (FFT), convert sone to phon or Hz to Cam (the units of the ERBN-number scale), calculate the
 equivalent rectangular bandwidth of the auditory filter, calculate binaural inhibition, and implement automatic gain circuits, among other things.
 
+## VII. JAX
+
+A JAX version of this model is also available. To use this code 
+```
+import tvl2018_jax as tvl
+```
+
 ## REFERENCES
 
 Glasberg, B. R., and Moore, B. C. J. (2006). "Prediction of absolute thresholds 
