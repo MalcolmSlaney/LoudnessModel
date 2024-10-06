@@ -784,11 +784,11 @@ def signal_segment_to_spectrum(data: np.ndarray,
         samples for left and right ears.
         rate: The sampling frequency in Hz.
         db_max: The root-mean-square sound pressure
-        level of a full-scale sinusoid in dB.
+          level of a full-scale sinusoid in dB.
         w_hann: A pre-calculated Hann window
-        array of shape (2048, 6).
+          array of shape (2048, 6).
         v_limiting_indizes: Indices defining the
-        limiting regions for the 6 FFTs.
+          limiting regions for the 6 FFTs.
 
     Returns:
         Relevant frequencies and levels for the left and right ears.
@@ -805,19 +805,30 @@ def signal_segment_to_spectrum(data: np.ndarray,
     ws = np.expand_dims(data, axis=1) * np.expand_dims(w_hann, axis=2)
 
     # FFT (6 FFTs and combination)
-    i_combined_fft = np.zeros((len(f), 2))
-    for i in range(6):
-        for j in range(2):
-            fft_result = np.fft.fft(ws[:, i, j])
-            magnitude_spectrum = np.abs(fft_result / npts)
-            magnitude_spectrum = magnitude_spectrum[:npts // 2 + 1]
-            # Amplitudes of sine components
-            magnitude_spectrum[1:-1] = 2 * magnitude_spectrum[1:-1]
-            intensity = magnitude_spectrum ** 2  # Intensity of components
-            intensity *= d_hann_correction
-            intensity *= 2**(i)  # Correction for window length
-            i_combined_fft[v_limiting_indizes[i]:v_limiting_indizes[i+1], j] =\
-                intensity[v_limiting_indizes[i]:v_limiting_indizes[i+1]] * 10**(db_max/10)
+    fft_result = np.fft.fft(ws, axis=0)
+    magnitude_spectrum = np.abs(fft_result / npts)
+    magnitude_spectrum = magnitude_spectrum[:npts // 2 + 1]
+    # Amplitudes of sine components
+    magnitude_scale = np.expand_dims(np.concatenate((np.ones((1,)),
+                                                     2*np.ones((len(f)-1,)))),
+                                     axis=[1, 2])
+    magnitude_spectrum *= magnitude_scale
+    intensity = magnitude_spectrum ** 2  # Intensity of components
+    intensity *= d_hann_correction
+    # Correction for window length, now n x 6 x 2
+    intensity *= np.expand_dims(2**np.arange(6), axis=[0, 2])
+    
+    limits_list = []
+    i = np.arange(len(f))
+    for j in range(6):
+      limits_list.append(np.select(np.logical_and(i >= v_limiting_indizes[j],
+                                                  i < v_limiting_indizes[j+1]),
+                                   np.ones((len(f))),
+                                   np.zeros((len(f))))) # n x 1
+    limits = np.expand_dims(np.array(limits_list).T, axis=2) # n x 6 x 2
+
+    i_combined_fft = intensity * 10**(db_max/10) * limits # n x 6 x 2
+    i_combined_fft = np.sum(i_combined_fft, axis=1) # n x 2
 
     # Take only components which are higher than max component level
     # minus 60 dB and higher than -30 dB SPL
