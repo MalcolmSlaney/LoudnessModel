@@ -801,10 +801,8 @@ def signal_segment_to_spectrum(data: np.ndarray,
     d_hann_correction = 10**(3.32/10)  # Actual filter correction factor
 
     # Window the signal
-    ws = np.zeros((npts, 6, 2))
-    for i in range(6):
-        for j in range(2):
-            ws[:, i, j] = data[:, j] * w_hann[:, i]
+    #   data is n x 2, w_hann is n x 6 , want n x 6 x 2
+    ws = np.expand_dims(data, axis=1) * np.expand_dims(w_hann, axis=2)
 
     # FFT (6 FFTs and combination)
     i_combined_fft = np.zeros((len(f), 2))
