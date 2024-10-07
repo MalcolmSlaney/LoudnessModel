@@ -3,11 +3,10 @@ import os
 import matplotlib.pyplot as plt
 from absl.testing import absltest
 
-import tvl2018 as tvl  # Ensure tvl2018.py is in the same directory or in Python path
+import tvl2018 as tvl 
 
 
-class TestAuditoryModel(absltest.TestCase):
-    """Test suite for the auditory model functions."""
+class LoudnessModelTests(absltest.TestCase):
     def test_basic_example(self):
         """Test the main_tv2018 function with a synthesized 1 kHz tone."""
         
@@ -23,7 +22,7 @@ class TestAuditoryModel(absltest.TestCase):
         # Here, you can modify the input values into tvl.main_tv2018 
         db_max = 50  # Example SPL value
         filename_or_sound = 'synthesize_1khz_100ms'
-        filter_filename = 'transfer functions/ff_32000.mat'  # Update with actual path
+        filter_filename = 'transfer functions/ff_32000.mat'  
         _, short_term_loudness, long_term_loudness = tvl.main_tv2018(
             filename_or_sound,
             db_max,
@@ -61,7 +60,7 @@ class TestAuditoryModel(absltest.TestCase):
         cls.sample_rate = 32000  # Hz
         cls.db_max = 50  # Example SPL value
         cls.filename_or_sound = 'synthesize_1khz_100ms'
-        cls.filter_filename = 'transfer functions/ff_32000.mat'  # Update with actual path
+        cls.filter_filename = 'transfer functions/ff_32000.mat'  
 
         cls.loudness, cls.short_term_loudness, cls.long_term_loudness = tvl.main_tv2018(
             cls.filename_or_sound,
@@ -100,6 +99,7 @@ class TestAuditoryModel(absltest.TestCase):
                 'f_right_relevant_first5': np.array([31.25, 46.875, 62.5, 78.125, 93.75]),
                 'l_right_relevant_first5': np.array([-27.18885881, -21.78693278, -18.70249616, -16.82990504, -12.5730688])
             },
+            
             # These are arbitrary indexes I chose because comparing the entire array might take too long. This can be easily changed, I just wanted something to compare it against. 
             'excitation_pattern_selected': np.array([
                 -100.0,                # Index 0
