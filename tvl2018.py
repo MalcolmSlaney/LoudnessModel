@@ -817,18 +817,16 @@ def signal_segment_to_spectrum(data: np.ndarray,
     intensity *= d_hann_correction
     # Correction for window length, now n x 6 x 2
     intensity *= np.expand_dims(2**np.arange(6), axis=[0, 2])
-    
-    limits_list = []
-    i = np.arange(len(f))
-    for j in range(6):
-      limits_list.append(np.select(np.logical_and(i >= v_limiting_indizes[j],
-                                                  i < v_limiting_indizes[j+1]),
-                                   np.ones((len(f))),
-                                   np.zeros((len(f))))) # n x 1
-    limits = np.expand_dims(np.array(limits_list).T, axis=2) # n x 6 x 2
+    frequency_mask = np.zeros((len(f), 6), dtype=bool)
+    for idx in range(6):
+        start_idx = v_limiting_indizes[idx]
+        end_idx = v_limiting_indizes[idx + 1]
+        frequency_mask[start_idx:end_idx, idx] = True
+    frequency_mask = frequency_mask[:, :, np.newaxis]  # Shape: (npts//2+1, 6, 1)
 
-    i_combined_fft = intensity * 10**(db_max/10) * limits # n x 6 x 2
+    i_combined_fft = intensity * 10**(db_max/10) * frequency_mask # n x 6 x 2
     i_combined_fft = np.sum(i_combined_fft, axis=1) # n x 2
+    
 
     # Take only components which are higher than max component level
     # minus 60 dB and higher than -30 dB SPL
