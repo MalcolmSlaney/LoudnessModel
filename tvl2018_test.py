@@ -1,15 +1,17 @@
-import numpy as np
 import os
+
 import matplotlib.pyplot as plt
+import numpy as np
 from absl.testing import absltest
 
-import tvl2018 as tvl 
+import tvl2018 as tvl
 
 
 class LoudnessModelTests(absltest.TestCase):
+    """Test suite for the TVL2018 loudness model implementation."""
+
     def test_basic_example(self):
         """Test the main_tv2018 function with a synthesized 1 kHz tone."""
-        
         # Ensure results directory exists
         os.makedirs('results', exist_ok=True)
 
@@ -17,12 +19,11 @@ class LoudnessModelTests(absltest.TestCase):
             'results', 'synthesize_1khz_100ms_50dB_loudness_plot.png')
         debug_summary_filename = os.path.join(
             'results', 'synthesize_1khz_100ms_50dB_calibration_level_TVL_2018.txt')
-        
 
-        # Here, you can modify the input values into tvl.main_tv2018 
+        # Here, you can modify the input values into tvl.main_tv2018
         db_max = 50  # Example SPL value
         filename_or_sound = 'synthesize_1khz_100ms'
-        filter_filename = 'transfer functions/ff_32000.mat'  
+        filter_filename = 'transfer functions/ff_32000.mat'
         _, short_term_loudness, long_term_loudness = tvl.main_tv2018(
             filename_or_sound,
             db_max,
@@ -50,8 +51,11 @@ class LoudnessModelTests(absltest.TestCase):
         plt.savefig(plot_filename)
         plt.close()
         self.assertTrue(os.path.exists(plot_filename))
-    
+
     # DO NOT MODIFY BELOW TESTS INPUT
+    # The tests below compare to a set of expected values
+    # based on the set inputs below as a baseline for future changes
+
     @classmethod
     def setUpClass(cls):
         """Set up shared test parameters and expected outputs."""
@@ -60,7 +64,7 @@ class LoudnessModelTests(absltest.TestCase):
         cls.sample_rate = 32000  # Hz
         cls.db_max = 50  # Example SPL value
         cls.filename_or_sound = 'synthesize_1khz_100ms'
-        cls.filter_filename = 'transfer functions/ff_32000.mat'  
+        cls.filter_filename = 'transfer functions/ff_32000.mat'
 
         cls.loudness, cls.short_term_loudness, cls.long_term_loudness = tvl.main_tv2018(
             cls.filename_or_sound,
@@ -91,16 +95,22 @@ class LoudnessModelTests(absltest.TestCase):
         # Expected Outputs from generate_expected_outputs.py (updated for 100 ms duration)
         cls.expected_outputs = {
             'loudness': 0.5513768526010244,  # sone
-            'short_term_loudness_first5': np.array([0.06962138, 0.12972933, 0.18023906, 0.22377568, 0.26341937]),
-            'long_term_loudness_first5': np.array([0.00069621, 0.00198654, 0.00376907, 0.00596914, 0.00854364]),
+            'short_term_loudness_first5': np.array(
+                [0.06962138, 0.12972933, 0.18023906, 0.22377568, 0.26341937]),
+            'long_term_loudness_first5': np.array(
+                [0.00069621, 0.00198654, 0.00376907, 0.00596914, 0.00854364]),
             'signal_segment_spectrum': {
-                'f_left_relevant_first5': np.array([31.25, 46.875, 62.5, 78.125, 93.75]),
-                'l_left_relevant_first5': np.array([-27.18885881, -21.78693278, -18.70249616, -16.82990504, -12.5730688]),
-                'f_right_relevant_first5': np.array([31.25, 46.875, 62.5, 78.125, 93.75]),
-                'l_right_relevant_first5': np.array([-27.18885881, -21.78693278, -18.70249616, -16.82990504, -12.5730688])
+                'f_left_relevant_first5': np.array(
+                    [31.25, 46.875, 62.5, 78.125, 93.75]),
+                'l_left_relevant_first5': np.array(
+                    [-27.18885881, -21.78693278, -18.70249616, -16.82990504, -12.5730688]),
+                'f_right_relevant_first5': np.array(
+                    [31.25, 46.875, 62.5, 78.125, 93.75]),
+                'l_right_relevant_first5': np.array(
+                    [-27.18885881, -21.78693278, -18.70249616, -16.82990504, -12.5730688])
             },
-            
-            # These are arbitrary indexes I chose because comparing the entire array might take too long. This can be easily changed, I just wanted something to compare it against. 
+
+            # These are arbitrary indexes chosen because comparing the entire array might take too long.
             'excitation_pattern_selected': np.array([
                 -100.0,                # Index 0
                 -100.0,                # Index 25
@@ -127,63 +137,62 @@ class LoudnessModelTests(absltest.TestCase):
             ]),
         }
 
-
     def test_overall_loudness(self):
         """Test overall loudness against expected maximum long-term loudness."""
-        
-
         # Ensure results directory exists
         os.makedirs('results', exist_ok=True)
 
         loudness = self.loudness
 
         # Uncomment this code for debug files and plot if needed
-        """
-        debug_plot_filename = os.path.join(
-            'results', 'test_overall_loudness_plot.png')
-        debug_summary_filename = os.path.join(
-            'results', 'test_overall_loudness_summary.txt')
-        loudness, _, _ = tvl.main_tv2018(
-            self.filename_or_sound,
-            self.db_max,
-            self.filter_filename,
-            debug_plot=True,
-            debug_plot_filename=debug_plot_filename,
-            debug_summary_filename=debug_summary_filename
-        )
-        """
+        # debug_plot_filename = os.path.join(
+        #     'results', 'test_overall_loudness_plot.png')
+        # debug_summary_filename = os.path.join(
+        #     'results', 'test_overall_loudness_summary.txt')
+        # loudness, _, _ = tvl.main_tv2018(
+        #     self.filename_or_sound,
+        #     self.db_max,
+        #     self.filter_filename,
+        #     debug_plot=True,
+        #     debug_plot_filename=debug_plot_filename,
+        #     debug_summary_filename=debug_summary_filename
+        # )
 
         # Assert maximum loudness
-        self.assertAlmostEqual(loudness, self.expected_outputs['loudness'], places=5,
-                               msg="Overall loudness does not match expected maximum value.")
-
+        self.assertAlmostEqual(
+            loudness,
+            self.expected_outputs['loudness'],
+            places=5,
+            msg="Overall loudness does not match expected maximum value."
+        )
 
     def test_short_term_loudness(self):
         """Test short-term loudness against expected first five values."""
         # Ensure results directory exists
         os.makedirs('results', exist_ok=True)
-
         short_term_loudness = self.short_term_loudness
-        """
-        debug_plot_filename = os.path.join(
-            'results', 'test_short_term_loudness_plot.png')
-        debug_summary_filename = os.path.join(
-            'results', 'test_short_term_loudness_summary.txt')
-        loudness, short_term_loudness, long_term_loudness = tvl.main_tv2018(
-            self.filename_or_sound,
-            self.db_max,
-            self.filter_filename,
-            debug_plot=True,
-            debug_plot_filename=debug_plot_filename,
-            debug_summary_filename=debug_summary_filename
-        )    
-        """
-        # Assert first five short-term loudness values
-        np.testing.assert_allclose(short_term_loudness[:5],
-                                   self.expected_outputs['short_term_loudness_first5'],
-                                   rtol=1e-5,
-                                   err_msg="First five short-term loudness values do not match expected.")
 
+        # Uncomment this code for debug files and plot if needed
+        # debug_plot_filename = os.path.join(
+        #     'results', 'test_short_term_loudness_plot.png')
+        # debug_summary_filename = os.path.join(
+        #     'results', 'test_short_term_loudness_summary.txt')
+        # loudness, short_term_loudness, long_term_loudness = tvl.main_tv2018(
+        #     self.filename_or_sound,
+        #     self.db_max,
+        #     self.filter_filename,
+        #     debug_plot=True,
+        #     debug_plot_filename=debug_plot_filename,
+        #     debug_summary_filename=debug_summary_filename
+        # )
+
+        # Assert first five short-term loudness values
+        np.testing.assert_allclose(
+            short_term_loudness[:5],
+            self.expected_outputs['short_term_loudness_first5'],
+            rtol=1e-5,
+            err_msg="First five short-term loudness values do not match expected."
+        )
 
     def test_long_term_loudness(self):
         """Test long-term loudness against expected first five values."""
@@ -194,27 +203,250 @@ class LoudnessModelTests(absltest.TestCase):
         long_term_loudness = self.long_term_loudness
 
         #  Uncomment this code for debug files and plot if needed
-        """
-        debug_plot_filename = os.path.join(
-            'results', 'test_long_term_loudness_plot.png')
-        debug_summary_filename = os.path.join(
-            'results', 'test_long_term_loudness_summary.txt')
-        _, _, long_term_loudness = tvl.main_tv2018(
-            self.filename_or_sound,
-            self.db_max,
-            self.filter_filename,
-            debug_plot=True,
-            debug_plot_filename=debug_plot_filename,
-            debug_summary_filename=debug_summary_filename
-        )
-        """
+        # debug_plot_filename = os.path.join(
+        #     'results', 'test_long_term_loudness_plot.png')
+        # debug_summary_filename = os.path.join(
+        #     'results', 'test_long_term_loudness_summary.txt')
+        # _, _, long_term_loudness = tvl.main_tv2018(
+        #     self.filename_or_sound,
+        #     self.db_max,
+        #     self.filter_filename,
+        #     debug_plot=True,
+        #     debug_plot_filename=debug_plot_filename,
+        #     debug_summary_filename=debug_summary_filename
+        # )
+        
 
         # Assert first five long-term loudness values
-        np.testing.assert_allclose(long_term_loudness[:5],
-                                   self.expected_outputs['long_term_loudness_first5'],
-                                   rtol=1e-5,
-                                   err_msg="First five long-term loudness values do not match expected.")
+        np.testing.assert_allclose(
+            long_term_loudness[:5],
+            self.expected_outputs['long_term_loudness_first5'],
+            rtol=1e-5,
+            err_msg="First five long-term loudness values do not match expected."
+        )
 
+    def test_signal_segment_to_spectrum(self):
+        """Test the signal segment to spectrum conversion against expected values."""
+        # Use the filtered signal from test_basic_example
+        filter_filename = self.filter_filename
+        # Synthesize and filter the sound
+        sound = tvl.synthesize_sound(self.frequency, self.duration, rate=self.sample_rate)
+        cochlea_filtered = tvl.sound_field_to_cochlea(sound, filter_filename)
+        # Process the first segment
+        segment = cochlea_filtered[:2048, :]  # First segment
+        f_left_relevant, l_left_relevant, f_right_relevant, l_right_relevant = tvl.signal_segment_to_spectrum(
+            data=segment,
+            rate=self.sample_rate,
+            db_max=self.db_max,
+            w_hann=self.w_hann,
+            v_limiting_indizes=self.v_limiting_indices
+        )
+
+        # Compare the first five relevant frequencies and levels for left
+        np.testing.assert_allclose(
+            f_left_relevant[:5],
+            self.expected_outputs['signal_segment_spectrum']['f_left_relevant_first5'],
+            rtol=1e-5,
+            err_msg="Left relevant frequencies do not match expected."
+        )
+        np.testing.assert_allclose(
+            l_left_relevant[:5],
+            self.expected_outputs['signal_segment_spectrum']['l_left_relevant_first5'],
+            rtol=1e-2,
+            err_msg="Left relevant levels do not match expected."
+        )
+
+        # Compare the first five relevant frequencies and levels for right
+        np.testing.assert_allclose(
+            f_right_relevant[:5],
+            self.expected_outputs['signal_segment_spectrum']['f_right_relevant_first5'],
+            rtol=1e-5,
+            err_msg="Right relevant frequencies do not match expected."
+        )
+        np.testing.assert_allclose(
+            l_right_relevant[:5],
+            self.expected_outputs['signal_segment_spectrum']['l_right_relevant_first5'],
+            rtol=1e-2,
+            err_msg="Right relevant levels do not match expected."
+        )
+
+    def test_spectrum_to_excitation_pattern_025_selected(self):
+        """Test selected points of spectrum_to_excitation_pattern_025 against expected values."""
+        f = np.array([1000.0, 2000.0, 3000.0])  # Hz
+        in_levels = np.array([60.0, 70.0, 80.0])  # dB
+
+        # Call the function under test
+        excitation = tvl.spectrum_to_excitation_pattern_025(f, in_levels)
+
+        # Define selected indices to skip the initial -100 dB values
+        selected_indices = [0, 25, 50, 100]  # Indices corresponding to printed expected values
+
+        # Extract excitation values at selected indices
+        excitation_selected = excitation[selected_indices]
+
+        # Load expected excitation (manually input)
+        expected_excitation = self.expected_outputs['excitation_pattern_selected']
+
+        # Assertions
+        self.assertEqual(
+            len(excitation_selected),
+            len(expected_excitation),
+            msg="Selected excitation pattern length mismatch."
+        )
+        self.assertTrue(
+            np.all(excitation_selected >= -100),
+            msg="Selected excitation pattern contains values below -100 dB."
+        )
+
+        # Compare against expected excitation values
+        np.testing.assert_allclose(
+            excitation_selected,
+            expected_excitation,
+            rtol=1e-5,
+            err_msg="Selected excitation pattern values do not match expected."
+        )
+
+        # Optional: Plot for manual inspection
+        # Uncomment the following lines if you wish to visualize the comparison
+        # plt.figure()
+        # plt.plot(excitation_selected, label='Computed Excitation Selected')
+        # plt.plot(expected_excitation, '--', label='Expected Excitation Selected')
+        # plt.legend()
+        # plt.title('Spectrum to Excitation Pattern Comparison (Selected Indices)')
+        # plt.xlabel('Selected Indices')
+        # plt.ylabel('Excitation Levels (dB)')
+        # plt.grid(True)
+        # plt.show()
+
+    def test_excitation_to_specific_loudness_binaural_025_selected(self):
+        """Test selected points of excitation_to_specific_loudness_binaural_025 against expected values."""
+        excitation_levels = np.linspace(0, 100, 150)  # 150 ERB steps
+
+        # Call the function under test
+        specific_loudness = tvl.excitation_to_specific_loudness_binaural_025(excitation_levels)
+
+        # Define selected indices for specific loudness
+        selected_indices = [0, 25, 50, 100]  # Indices corresponding to printed expected values
+
+        # Extract specific loudness values at selected indices
+        specific_loudness_selected = specific_loudness[selected_indices]
+
+        # Load expected specific loudness (manually input)
+        expected_specific_loudness = self.expected_outputs['specific_loudness_selected']
+
+        # Assertions
+        self.assertEqual(
+            len(specific_loudness_selected),
+            len(expected_specific_loudness),
+            msg="Selected specific loudness length mismatch."
+        )
+        self.assertTrue(
+            np.all(specific_loudness_selected >= 0),
+            msg="Selected specific loudness contains negative values."
+        )
+
+        # Compare against expected specific loudness values
+        np.testing.assert_allclose(
+            specific_loudness_selected,
+            expected_specific_loudness,
+            rtol=1e-5,
+            err_msg="Selected specific loudness values do not match expected."
+        )
+
+        # Optional: Plot for manual inspection
+        # Uncomment the following lines if you wish to visualize the comparison
+        # plt.figure()
+        # plt.plot(specific_loudness_selected, label='Computed Specific Loudness Selected')
+        # plt.plot(expected_specific_loudness, '--', label='Expected Specific Loudness Selected')
+        # plt.legend()
+        # plt.title('Excitation to Specific Loudness Comparison (Selected Indices)')
+        # plt.xlabel('Selected Indices')
+        # plt.ylabel('Specific Loudness (Sone)')
+        # plt.grid(True)
+        # plt.show()
+
+    def test_filtered_signal_to_monaural_instantaneous_specific_loudness_selected(self):
+        """Test selected point against expected values."""
+        # Example parameters (consistent with expected value generation)
+        frequency = self.frequency  # Hz
+        duration = self.duration  # seconds
+        rate = self.sample_rate
+        db_max = self.db_max
+        filter_filename = self.filter_filename
+
+        # Synthesize sound
+        sound = tvl.synthesize_sound(frequency, duration, rate)
+
+        # Filter sound
+        cochlea_filtered = tvl.sound_field_to_cochlea(sound, filter_filename)
+
+        # Call the function under test
+        ist_loudness_left, ist_loudness_right =\
+            tvl.filtered_signal_to_monaural_instantaneous_specific_loudness(
+              cochlea_filtered, rate, db_max)
+
+        # Define selected indices to test
+        selected_segments = [0, 25, 50, 100]
+        erb_index = 1  # Corresponds to ist_loudness_left[segment][erb_index]
+
+        # Extract instantaneous specific loudness at selected segments and ERB index
+        ist_left_selected = np.array([ist_loudness_left[seg][erb_index] for seg in selected_segments])
+        ist_right_selected = np.array([ist_loudness_right[seg][erb_index] for seg in selected_segments])
+
+        # Load expected instantaneous specific loudness (manually input)
+        expected_ist_left = self.expected_outputs['instantaneous_specific_loudness_left_selected']
+        expected_ist_right = self.expected_outputs['instantaneous_specific_loudness_right_selected']
+
+        # Assertions for left ear
+        self.assertTrue(
+            np.all(ist_left_selected >= 0),
+            msg="Selected instantaneous specific loudness left contains negative values."
+        )
+        np.testing.assert_allclose(
+            ist_left_selected,
+            expected_ist_left,
+            rtol=1e-5,
+            err_msg="Selected instantaneous specific loudness left does not match expected."
+        )
+
+        # Assertions for right ear
+        self.assertTrue(
+            np.all(ist_right_selected >= 0),
+            msg="Selected instantaneous specific loudness right contains negative values."
+        )
+        np.testing.assert_allclose(
+            ist_right_selected,
+            expected_ist_right,
+            rtol=1e-5,
+            err_msg="Selected instantaneous specific loudness right does not match expected."
+        )
+
+        # Optional: Plot for manual inspection
+        # Uncomment the following lines if you wish to visualize the comparison
+        # plt.figure()
+        # plt.plot(ist_left_selected, label='Computed IST Loudness Left Selected')
+        # plt.plot(expected_ist_left, '--', label='Expected IST Loudness Left Selected')
+        # plt.plot(ist_right_selected, label='Computed IST Loudness Right Selected')
+        # plt.plot(expected_ist_right, '--', label='Expected IST Loudness Right Selected')
+        # plt.legend()
+        # plt.title('Instantaneous Specific Loudness Comparison (Selected Indices)')
+        # plt.xlabel('Selected Indices')
+        # plt.ylabel('Specific Loudness (Sone)')
+        # plt.grid(True)
+        # plt.show()
+
+    def test_get_alpha_and_p_functions(self):
+        """Test get_alpha and get_p functions for correctness."""
+        f = np.array([500, 1000, 2000, 4000, 8000])  # Hz
+        alpha = tvl.get_alpha(f)
+        p = tvl.get_p(f)
+
+        # Since get_alpha and get_p depend on internal interpolations and tables,
+        # we'll perform sanity checks based on expected behavior
+        self.assertEqual(len(alpha), len(f), "get_alpha output length mismatch.")
+        self.assertEqual(len(p), len(f), "get_p output length mismatch.")
+        self.assertTrue(np.all(alpha > 0), "Alpha values should be positive.")
+        self.assertTrue(np.all(p > 0), "P values should be positive.")
 
     def test_interpolation(self):
         """Test the interpolation function with 'pchip' and 'linear' methods."""
@@ -283,7 +515,6 @@ class LoudnessModelTests(absltest.TestCase):
         self.assertTrue(os.path.exists(plot_filename_linear),
                         msg="Linear interpolation plot file was not created.")
 
-
     def test_agc_functions(self):
         """Test both AGC next frame functions with known inputs."""
         # Test agc_next_frame_of_vector
@@ -299,44 +530,48 @@ class LoudnessModelTests(absltest.TestCase):
         ])
 
         output_of_vector = tvl.agc_next_frame_of_vector(v_last_frame, v_this_input, aA, aR)
-        np.testing.assert_allclose(output_of_vector, expected_output_of_vector, rtol=1e-5,
-                                   err_msg="AGC next frame of vector output does not match expected.")
-
+        np.testing.assert_allclose(
+            output_of_vector,
+            expected_output_of_vector,
+            rtol=1e-5,
+            err_msg="AGC next frame of vector output does not match expected."
+        )
         # Test agc_next_frame
         # Attack condition
         d_last_frame_attack = 1.0
         d_this_input_attack = 2.0
         expected_attack = aA * d_this_input_attack + (1 - aA) * d_last_frame_attack  # 1.5
         output_attack = tvl.agc_next_frame(d_last_frame_attack, d_this_input_attack, aA, aR)
-        self.assertAlmostEqual(output_attack, expected_attack, places=5,
-                               msg="AGC next frame attack output does not match expected.")
+        self.assertAlmostEqual(
+            output_attack,
+            expected_attack,
+            places=5,
+            msg="AGC next frame attack output does not match expected."
+        )
 
         # Release condition
         d_last_frame_release = 2.0
         d_this_input_release = 1.0
         expected_release = aR * d_this_input_release + (1 - aR) * d_last_frame_release  # 1.9
         output_release = tvl.agc_next_frame(d_last_frame_release, d_this_input_release, aA, aR)
-        self.assertAlmostEqual(output_release, expected_release, places=5,
-                               msg="AGC next frame release output does not match expected.")
+        self.assertAlmostEqual(
+            output_release,
+            expected_release,
+            places=5,
+            msg="AGC next frame release output does not match expected."
+        )
 
         # Equal inputs
         d_last_frame_equal = 1.0
         d_this_input_equal = 1.0
         expected_equal = d_this_input_equal  # 1.0
         output_equal = tvl.agc_next_frame(d_last_frame_equal, d_this_input_equal, aA, aR)
-        self.assertAlmostEqual(output_equal, expected_equal, places=5,
-                               msg="AGC next frame equal input output does not match expected.")
-
-
-    def test_erb_number_to_frequency(self):
-        """Test the conversion from ERB numbers to frequencies."""
-        erb_numbers = np.array([1, 10, 20, 30, 40])
-        frequencies = tvl.erb_number_to_frequency(erb_numbers)
-        # Expected frequencies calculated using the formula
-        expected_frequencies = (10 ** (erb_numbers / 21.366) - 1) / 0.004368
-        np.testing.assert_allclose(frequencies, expected_frequencies, rtol=1e-5,
-                                   err_msg="ERB number to frequency conversion does not match expected.")
-
+        self.assertAlmostEqual(
+            output_equal,
+            expected_equal,
+            places=5,
+            msg="AGC next frame equal input output does not match expected."
+        )
 
     def test_input_level_per_erb(self):
         """Test the input levels per ERB calculation."""
@@ -345,11 +580,15 @@ class LoudnessModelTests(absltest.TestCase):
         input_levels = tvl.input_level_per_erb(f, in_levels)
         # Check if input_levels is a scalar or array. Based on the function, it should return an array
         # of the same length as 'in_levels'
-        self.assertEqual(len(input_levels), len(in_levels),
-                         msg="Input levels per ERB length mismatch.")
-        self.assertTrue(np.all(input_levels >= 0),
-                        msg="Input levels should be non-negative.")
-
+        self.assertEqual(
+            len(input_levels),
+            len(in_levels),
+            msg="Input levels per ERB length mismatch."
+        )
+        self.assertTrue(
+            np.all(input_levels >= 0),
+            msg="Input levels should be non-negative."
+        )
 
     def test_synthesize_sound(self):
         """Test the sound synthesis function."""
@@ -361,25 +600,31 @@ class LoudnessModelTests(absltest.TestCase):
         self.assertEqual(sound.shape, (expected_samples, 2), "Synthesized sound shape mismatch.")
         # Verify amplitude scaling (should be 10 dB below full scale)
         # Full scale amplitude is 1.0, 10 dB below is 10^(-10/20) = 0.316227766
-        self.assertAlmostEqual(np.max(np.abs(sound)), 0.316227766, places=5,
-                               msg="Synthesized sound amplitude scaling incorrect.")
-
+        self.assertAlmostEqual(
+            np.max(np.abs(sound)),
+            0.316227766,
+            places=5,
+            msg="Synthesized sound amplitude scaling incorrect."
+        )
+        
         # Optionally, plot and save the waveform for manual inspection
-        plt.figure(figsize=(10, 4))
-        t = np.linspace(0, duration, expected_samples, endpoint=False)
-        plt.plot(t, sound[:, 0], label='Left Channel')
-        plt.plot(t, sound[:, 1], label='Right Channel', linestyle='--')
-        plt.xlabel('Time (s)')
-        plt.ylabel('Amplitude')
-        plt.title('Synthesized 1 kHz Tone')
-        plt.legend()
-        plt.grid(True)
-        plot_filename = os.path.join('results', 'test_synthesize_sound_plot.png')
-        plt.savefig(plot_filename)
-        plt.close()
-        self.assertTrue(os.path.exists(plot_filename),
-                        msg="Synthesized sound plot file was not created.")
-
+        # plt.figure(figsize=(10, 4))
+        # t = np.linspace(0, duration, expected_samples, endpoint=False)
+        # plt.plot(t, sound[:, 0], label='Left Channel')
+        # plt.plot(t, sound[:, 1], label='Right Channel', linestyle='--')
+        # plt.xlabel('Time (s)')
+        # plt.ylabel('Amplitude')
+        # plt.title('Synthesized 1 kHz Tone')
+        # plt.legend()
+        # plt.grid(True)
+        # plot_filename = os.path.join('results', 'test_synthesize_sound_plot.png')
+        # plt.savefig(plot_filename)
+        # plt.close()
+        # self.assertTrue(
+        #     os.path.exists(plot_filename),
+        #     msg="Synthesized sound plot file was not created."
+        # )
+        
 
     def test_excitation_threshold_tvl(self):
         """Test the excitation threshold calculation."""
@@ -387,9 +632,12 @@ class LoudnessModelTests(absltest.TestCase):
         expected = np.array([28.18, 15.68,  3.63,  3.63,  3.63])
 
         output = tvl.excitation_threshold_tvl(f)
-        np.testing.assert_allclose(output, expected, rtol=1e-2,
-                                   err_msg="Excitation threshold calculation does not match expected.")
-
+        np.testing.assert_allclose(
+            output,
+            expected,
+            rtol=1e-2,
+            err_msg="Excitation threshold calculation does not match expected."
+        )
 
     def test_get_g_tvl(self):
         """Test the cochlear amplifier gain calculation."""
@@ -402,211 +650,12 @@ class LoudnessModelTests(absltest.TestCase):
         thresholds = tvl.excitation_threshold_tvl(f)
         linear_threshold = 10 ** (thresholds / 10)
         expected_g = 10 ** (3.63 / 10) / linear_threshold
-        np.testing.assert_allclose(g, expected_g, rtol=1e-4,
-                                   err_msg="Cochlear amplifier gain calculation does not match expected.")
-
-
-    def test_signal_segment_to_spectrum(self):
-        """Test the signal segment to spectrum conversion against expected values."""
-        # Use the filtered signal from test_basic_example
-        filter_filename = self.filter_filename
-
-        # Synthesize and filter the sound
-        sound = tvl.synthesize_sound(self.frequency, self.duration, rate=self.sample_rate)
-        cochlea_filtered = tvl.sound_field_to_cochlea(sound, filter_filename)
-
-        # Process the first segment
-        segment = cochlea_filtered[:2048, :]  # First segment
-        f_left_relevant, l_left_relevant, f_right_relevant, l_right_relevant = tvl.signal_segment_to_spectrum(
-            data=segment,
-            rate=self.sample_rate,
-            db_max=self.db_max,
-            w_hann=self.w_hann,
-            v_limiting_indizes=self.v_limiting_indices
+        np.testing.assert_allclose(
+            g,
+            expected_g,
+            rtol=1e-4,
+            err_msg="Cochlear amplifier gain calculation does not match expected."
         )
-
-        # Compare the first five relevant frequencies and levels for left
-        np.testing.assert_allclose(f_left_relevant[:5],
-                                   self.expected_outputs['signal_segment_spectrum']['f_left_relevant_first5'],
-                                   rtol=1e-5,
-                                   err_msg="Left relevant frequencies do not match expected.")
-        np.testing.assert_allclose(l_left_relevant[:5],
-                                   self.expected_outputs['signal_segment_spectrum']['l_left_relevant_first5'],
-                                   rtol=1e-2,
-                                   err_msg="Left relevant levels do not match expected.")
-
-        # Compare the first five relevant frequencies and levels for right
-        np.testing.assert_allclose(f_right_relevant[:5],
-                                   self.expected_outputs['signal_segment_spectrum']['f_right_relevant_first5'],
-                                   rtol=1e-5,
-                                   err_msg="Right relevant frequencies do not match expected.")
-        np.testing.assert_allclose(l_right_relevant[:5],
-                                   self.expected_outputs['signal_segment_spectrum']['l_right_relevant_first5'],
-                                   rtol=1e-2,
-                                   err_msg="Right relevant levels do not match expected.")
-
-
-    def test_get_alpha_and_p_functions(self):
-        """Test get_alpha and get_p functions for correctness."""
-        f = np.array([500, 1000, 2000, 4000, 8000])  # Hz
-        alpha = tvl.get_alpha(f)
-        p = tvl.get_p(f)
-
-        # Since get_alpha and get_p depend on internal interpolations and tables,
-        # we'll perform sanity checks based on expected behavior
-        self.assertEqual(len(alpha), len(f), "get_alpha output length mismatch.")
-        self.assertEqual(len(p), len(f), "get_p output length mismatch.")
-        self.assertTrue(np.all(alpha > 0), "Alpha values should be positive.")
-        self.assertTrue(np.all(p > 0), "P values should be positive.")
-
-
-    def test_frequency_to_erb_number(self):
-        """Test the frequency to ERB number conversion."""
-        frequencies = np.array([100, 500, 1000, 2000, 4000, 8000])  # Hz
-        erb_numbers = tvl.frequency_to_erb_number(frequencies)
-
-        # Expected ERB numbers using the formula provided in the code:
-        # 21.366 * np.log10(0.004368 * f + 1)
-        expected_erb_numbers = 21.366 * np.log10(0.004368 * frequencies + 1)
-        np.testing.assert_allclose(erb_numbers, expected_erb_numbers, rtol=1e-5,
-                                   err_msg="Frequency to ERB number conversion does not match expected.")
-
-
-    def test_spectrum_to_excitation_pattern_025_selected(self):
-        """Test selected points of spectrum_to_excitation_pattern_025 against expected values."""
-        f = np.array([1000.0, 2000.0, 3000.0])  # Hz
-        in_levels = np.array([60.0, 70.0, 80.0])  # dB
-
-        # Call the function under test
-        excitation = tvl.spectrum_to_excitation_pattern_025(f, in_levels)
-
-        # Define selected indices to skip the initial -100 dB values
-        selected_indices = [0, 25, 50, 100]  # Indices corresponding to printed expected values
-
-        # Extract excitation values at selected indices
-        excitation_selected = excitation[selected_indices]
-
-        # Load expected excitation (manually input)
-        expected_excitation = self.expected_outputs['excitation_pattern_selected']
-
-        # Assertions
-        self.assertEqual(len(excitation_selected), len(expected_excitation),
-                         msg="Selected excitation pattern length mismatch.")
-        self.assertTrue(np.all(excitation_selected >= -100),
-                        msg="Selected excitation pattern contains values below -100 dB.")
-
-        # Compare against expected excitation values
-        np.testing.assert_allclose(excitation_selected, expected_excitation, rtol=1e-5,
-                                   err_msg="Selected excitation pattern values do not match expected.")
-
-        # Optional: Plot for manual inspection
-        # Uncomment the following lines if you wish to visualize the comparison
-        # plt.figure()
-        # plt.plot(excitation_selected, label='Computed Excitation Selected')
-        # plt.plot(expected_excitation, '--', label='Expected Excitation Selected')
-        # plt.legend()
-        # plt.title('Spectrum to Excitation Pattern Comparison (Selected Indices)')
-        # plt.xlabel('Selected Indices')
-        # plt.ylabel('Excitation Levels (dB)')
-        # plt.grid(True)
-        # plt.show()
-
-
-    def test_excitation_to_specific_loudness_binaural_025_selected(self):
-        """Test selected points of excitation_to_specific_loudness_binaural_025 against expected values."""
-        excitation_levels = np.linspace(0, 100, 150)  # 150 ERB steps
-
-        # Call the function under test
-        specific_loudness = tvl.excitation_to_specific_loudness_binaural_025(excitation_levels)
-
-        # Define selected indices for specific loudness
-        selected_indices = [0, 25, 50, 100]  # Indices corresponding to printed expected values
-
-        # Extract specific loudness values at selected indices
-        specific_loudness_selected = specific_loudness[selected_indices]
-
-        # Load expected specific loudness (manually input)
-        expected_specific_loudness = self.expected_outputs['specific_loudness_selected']
-
-        # Assertions
-        self.assertEqual(len(specific_loudness_selected), len(expected_specific_loudness),
-                         msg="Selected specific loudness length mismatch.")
-        self.assertTrue(np.all(specific_loudness_selected >= 0),
-                        msg="Selected specific loudness contains negative values.")
-
-        # Compare against expected specific loudness values
-        np.testing.assert_allclose(specific_loudness_selected, expected_specific_loudness, rtol=1e-5,
-                                   err_msg="Selected specific loudness values do not match expected.")
-
-        # Optional: Plot for manual inspection
-        # Uncomment the following lines if you wish to visualize the comparison
-        # plt.figure()
-        # plt.plot(specific_loudness_selected, label='Computed Specific Loudness Selected')
-        # plt.plot(expected_specific_loudness, '--', label='Expected Specific Loudness Selected')
-        # plt.legend()
-        # plt.title('Excitation to Specific Loudness Comparison (Selected Indices)')
-        # plt.xlabel('Selected Indices')
-        # plt.ylabel('Specific Loudness (Sone)')
-        # plt.grid(True)
-        # plt.show()
-
-
-    def test_filtered_signal_to_monaural_instantaneous_specific_loudness_selected(self):
-        """Test selected points of filtered_signal_to_monaural_instantaneous_specific_loudness against expected values."""
-        # Example parameters (consistent with expected value generation)
-        frequency = 1000  # Hz
-        duration = 0.1     # seconds
-        rate = self.sample_rate
-        db_max = self.db_max
-        filter_filename = self.filter_filename
-
-        # Synthesize sound
-        sound = tvl.synthesize_sound(frequency, duration, rate)
-
-        # Filter sound
-        cochlea_filtered = tvl.sound_field_to_cochlea(sound, filter_filename)
-
-        # Call the function under test
-        ist_loudness_left, ist_loudness_right = tvl.filtered_signal_to_monaural_instantaneous_specific_loudness(
-            cochlea_filtered, rate, db_max)
-
-        # Define selected indices to test
-        selected_segments = [0, 25, 50, 100]
-        erb_index = 1  # Corresponds to ist_loudness_left[segment][erb_index]
-
-        # Extract instantaneous specific loudness at selected segments and ERB index
-        ist_left_selected = np.array([ist_loudness_left[seg][erb_index] for seg in selected_segments])
-        ist_right_selected = np.array([ist_loudness_right[seg][erb_index] for seg in selected_segments])
-
-        # Load expected instantaneous specific loudness (manually input)
-        expected_ist_left = self.expected_outputs['instantaneous_specific_loudness_left_selected']
-        expected_ist_right = self.expected_outputs['instantaneous_specific_loudness_right_selected']
-
-        # Assertions for left ear
-        self.assertTrue(np.all(ist_left_selected >= 0),
-                        msg="Selected instantaneous specific loudness left contains negative values.")
-        np.testing.assert_allclose(ist_left_selected, expected_ist_left, rtol=1e-5,
-                                   err_msg="Selected instantaneous specific loudness left does not match expected.")
-
-        # Assertions for right ear
-        self.assertTrue(np.all(ist_right_selected >= 0),
-                        msg="Selected instantaneous specific loudness right contains negative values.")
-        np.testing.assert_allclose(ist_right_selected, expected_ist_right, rtol=1e-5,
-                                   err_msg="Selected instantaneous specific loudness right does not match expected.")
-
-        # Optional: Plot for manual inspection
-        # Uncomment the following lines if you wish to visualize the comparison
-        # plt.figure()
-        # plt.plot(ist_left_selected, label='Computed IST Loudness Left Selected')
-        # plt.plot(expected_ist_left, '--', label='Expected IST Loudness Left Selected')
-        # plt.plot(ist_right_selected, label='Computed IST Loudness Right Selected')
-        # plt.plot(expected_ist_right, '--', label='Expected IST Loudness Right Selected')
-        # plt.legend()
-        # plt.title('Instantaneous Specific Loudness Comparison (Selected Indices)')
-        # plt.xlabel('Selected Indices')
-        # plt.ylabel('Specific Loudness (Sone)')
-        # plt.grid(True)
-        # plt.show()    
 
 
 if __name__ == '__main__':

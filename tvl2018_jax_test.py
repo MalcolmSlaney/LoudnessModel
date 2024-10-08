@@ -1,9 +1,8 @@
+import os
 import jax
 import jax.numpy as jnp
-import numpy as np # For testing
-import os
 import matplotlib.pyplot as plt
-
+import numpy as np  # For testing
 from absl.testing import absltest
 import cProfile
 
@@ -57,7 +56,6 @@ class LoudnessTest(absltest.TestCase):
         plt.savefig(plot_filename)
         plt.close()
         self.assertTrue(os.path.exists(plot_filename))
-
 
     def test_interpolation(self):
         """Test the interpolation function with pchip and linear and visualize the results."""
@@ -134,7 +132,6 @@ class LoudnessTest(absltest.TestCase):
         # Assert that the standard error is acceptable
         self.assertLess(std_error, 0.05, "Standard error too high for linear interpolation")
 
-
     def test_agc_next_frame_of_vector(self):
         """Test the AGC function with known inputs."""
         v_last_frame = jnp.array([1.0, 2.0, 3.0])
@@ -150,8 +147,7 @@ class LoudnessTest(absltest.TestCase):
 
         output = tvl.agc_next_frame_of_vector(v_last_frame, v_this_input, aA, aR)
         np.testing.assert_allclose(output, expected_output, rtol=1e-5)
-   
-   
+
     def test_agc_next_frame(self):
         d_last_frame = 1.0
         d_this_input = 2.0
@@ -176,7 +172,6 @@ class LoudnessTest(absltest.TestCase):
         output = tvl.agc_next_frame(d_last_frame, d_this_input, attack, release)
         self.assertAlmostEqual(output, d_this_input, places=5)
 
-
     def test_get_g_tvl(self):
         """Test the cochlear amplifier gain calculation."""
         f = jnp.array([125, 250, 500, 1000, 2000, 4000, 8000])
@@ -197,7 +192,6 @@ class LoudnessTest(absltest.TestCase):
         print("Comparison with calculated values passed.")
         print("get_g_tvl tests passed.\n")
 
-
     def test_erb_number_to_frequency(self):
         """Test the conversion from ERB numbers to frequencies."""
         erb_numbers = jnp.array([1, 10, 20, 30, 40])
@@ -205,7 +199,6 @@ class LoudnessTest(absltest.TestCase):
         # Expected frequencies calculated using the formula
         expected_frequencies = (10 ** (erb_numbers / 21.366) - 1) / 0.004368
         np.testing.assert_allclose(frequencies, expected_frequencies, rtol=1e-5)
-
 
     def test_excitation_threshold_tvl(self):
         """Test the excitation threshold calculation."""
@@ -215,7 +208,6 @@ class LoudnessTest(absltest.TestCase):
         expected_thresholds = jnp.where(f < 500, thresholds, 3.63)
         np.testing.assert_allclose(thresholds, expected_thresholds, rtol=1e-5)
 
-
     def test_input_level_per_erb(self):
         """Test the input levels per ERB calculation."""
         f = jnp.array([1000.0, 2000.0])
@@ -224,7 +216,6 @@ class LoudnessTest(absltest.TestCase):
         # Checks if the lengths are equal and if levels are positive
         self.assertEqual(len(input_levels), len(in_levels))
         self.assertTrue(jnp.all(input_levels >= 0), "Input levels should be non-negative.")
-
 
     def test_synthesize_sound(self):
         """Test the sound synthesis function."""
@@ -249,7 +240,6 @@ class LoudnessTest(absltest.TestCase):
         plt.savefig(plot_filename)
         plt.close()
         self.assertTrue(os.path.exists(plot_filename))
-
 
     def test_signal_segment_to_spectrum(self):
         """Test the spectrum calculation of a signal segment."""
@@ -284,7 +274,6 @@ class LoudnessTest(absltest.TestCase):
         self.assertAlmostEqual(peak_freq_right, freq, delta=50,
                                msg="Right channel peak frequency mismatch.")
 
-
     def test_filtered_signal_to_monaural_instantaneous_specific_loudness(self):
         """Test the calculation of instantaneous specific loudness."""
         rate = 32000
@@ -315,7 +304,6 @@ class LoudnessTest(absltest.TestCase):
         plt.close()
         self.assertTrue(os.path.exists(plot_filename))
 
-
     def test_instantaneous_specific_loudness_to_shortterm_specific_loudness(self):
         """Test the AGC from instantaneous to short-term specific loudness."""
         key = jax.random.key(42)
@@ -343,7 +331,6 @@ class LoudnessTest(absltest.TestCase):
         plt.close()
         self.assertTrue(os.path.exists(plot_filename))
 
-
     def test_shortterm_loudness_to_longterm_loudness(self):
         """Test the AGC from short-term to long-term loudness."""
         Nst = jnp.linspace(0, 10, 100)
@@ -363,6 +350,7 @@ class LoudnessTest(absltest.TestCase):
         plt.savefig(plot_filename)
         plt.close()
         self.assertTrue(os.path.exists(plot_filename))
+
 
 if __name__ == '__main__':
     cProfile.run(absltest.main())

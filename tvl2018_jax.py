@@ -1,13 +1,14 @@
 import os
+
 import jax
 import jax.numpy as jnp
-from typing import List, Optional, Tuple, Union
-from scipy.io import wavfile
-from scipy.io import loadmat
-from scipy.signal import resample
-from scipy.signal import convolve
-from scipy.interpolate import interp1d, PchipInterpolator
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy.io import loadmat, wavfile
+from scipy.signal import convolve, resample
+from scipy.interpolate import PchipInterpolator, interp1d
+from typing import List, Optional, Tuple, Union
+
 
 sone_phon = \
     jnp.array([[0.000538, 0.0], [0.000566, 0.1], [0.000596, 0.2], [0.000627, 0.3],
@@ -338,11 +339,11 @@ def interpolation(xx: Union[List[float], jnp.ndarray],
                                    fill_value="extrapolate")
         elif method == 'pchip':
             interpolate = PchipInterpolator(xx, yy, extrapolate=True)
-        else: # Code never reaches here, but just in case 
+        else:  # Code never reaches here, but just in case
             interpolate = interp1d(xx, yy, kind=method,
                                    fill_value="extrapolate")
         out = interpolate(x)
-    else: # Code also doesn't reach here 
+    else:  # Code also doesn't reach here
         # Repeat yy for all x if there's only one point
         out = jnp.full_like(x, yy)
 
@@ -370,7 +371,7 @@ def agc_next_frame_of_vector(v_last_frame: Union[List[float], jnp.ndarray],
     out_last_is_larger = aR * v_this_input + (1 - aR) * v_last_frame  # Release
 
     out = jnp.where(v_this_input > v_last_frame, out_this_is_larger,
-                   out_last_is_larger)
+                    out_last_is_larger)
 
     return out
 
@@ -730,8 +731,8 @@ def output_power_at_erb_numbers_025(input_levels: Union[List[float], jnp.ndarray
 
     return excitation
 
-# This function is also never used, only sone to phon is called. 
 
+# This function is also never used, only sone to phon is called.
 def phon_to_sone_tv2015(input: Union[List[float], jnp.ndarray]) -> jnp.ndarray:
     """
     Converts Phon to Sone using predefined conversion table.
@@ -816,24 +817,21 @@ def signal_segment_to_spectrum(data: jnp.ndarray,
     # Amplitudes of sine components
     magnitude_scale = jnp.expand_dims(jnp.concatenate((jnp.ones((1,)),
                                                        2*jnp.ones((len(f)-1,)))),
-                                     axis=[1, 2])
+                                      axis=[1, 2])
     magnitude_spectrum *= magnitude_scale
     intensity = magnitude_spectrum ** 2  # Intensity of components
     intensity *= d_hann_correction
     # Correction for window length, now n x 6 x 2
     intensity *= jnp.expand_dims(2**jnp.arange(6), axis=[0, 2])
-    
-    limits_list = []
-    i = jnp.arange(len(f))
-    for j in range(6):
-      limits_list.append(jnp.select(jnp.logical_and(i >= v_limiting_indizes[j],
-                                                    i < v_limiting_indizes[j+1]),
-                                    jnp.ones((len(f))),
-                                    jnp.zeros((len(f))))) # n x 1
-    limits = jnp.expand_dims(jnp.array(limits_list).T, axis=2) # n x 6 x 2
+    frequency_mask = jnp.zeros((len(f), 6), dtype=bool)
+    for idx in range(6):
+        start_idx = v_limiting_indizes[idx]
+        end_idx = v_limiting_indizes[idx + 1]
+        frequency_mask[start_idx:end_idx, idx] = True
+    frequency_mask = frequency_mask[:, :, jnp.newaxis]  # Shape: (npts//2+1, 6, 1)
 
-    i_combined_fft = intensity * 10**(db_max/10) * limits # n x 6 x 2
-    i_combined_fft = jnp.sum(i_combined_fft, axis=1) # n x 2
+    i_combined_fft = intensity * 10**(db_max/10) * frequency_mask  # n x 6 x 2
+    i_combined_fft = jnp.sum(i_combined_fft, axis=1)  # n x 2
 
     # Take only components which are higher than max component level
     # minus 60 dB and higher than -30 dB SPL
@@ -880,15 +878,15 @@ def instantaneous_specific_loudness_to_shortterm_specific_loudness(
 
     # First value calculation using an initial zero vector
     short_term_specific_loudness = [
-        agc_next_frame_of_vector(jnp.zeros(150), 
-                                 instantaneous_specific_loudness[0, :], 
-                                 aA, aR),]
+        agc_next_frame_of_vector(jnp.zeros(150),
+                                 instantaneous_specific_loudness[0, :],
+                                 aA, aR), ]
     # Iterative calculation for remaining values
     for i in range(1, instantaneous_specific_loudness.shape[0]):
-      short_term_specific_loudness.append(
-          agc_next_frame_of_vector(short_term_specific_loudness[-1], 
-                                   instantaneous_specific_loudness[i, :], 
-                                   aA, aR))
+        short_term_specific_loudness.append(
+            agc_next_frame_of_vector(short_term_specific_loudness[-1],
+                                     instantaneous_specific_loudness[i, :],
+                                     aA, aR))
     short_term_specific_loudness = jnp.array(short_term_specific_loudness)
 
     # Calculate short-term loudness by summing
@@ -1029,9 +1027,6 @@ def filtered_signal_to_monaural_instantaneous_specific_loudness(
     v_limiting_f = [20, 80, 500, 1250, 2540, 4050, 15000]
     v_limiting_indices = [int(f / (rate / npts)) + 1 for f in v_limiting_f]
 
-    # Prepare arrays to hold the loudness values
-    loudness_length = len(jnp.arange(1.75, 39.25, 0.25))
-
     instantaneous_specific_loudness_left = []
     instantaneous_specific_loudness_right = []
 
@@ -1071,7 +1066,7 @@ def filtered_signal_to_monaural_instantaneous_specific_loudness(
         instantaneous_specific_loudness_left.append(specific_loudness_left)
         instantaneous_specific_loudness_right.append(specific_loudness_right)
 
-    return (jnp.array(instantaneous_specific_loudness_left), 
+    return (jnp.array(instantaneous_specific_loudness_left),
             jnp.array(instantaneous_specific_loudness_right))
 
 
@@ -1091,7 +1086,7 @@ def shortterm_loudness_to_longterm_loudness(Nst: jnp.ndarray) -> jnp.ndarray:
 
     Nlt = [agc_next_frame(0, Nst[0], aA, aR), ]
     for i in range(1, len(Nst)):
-      Nlt.append(agc_next_frame(Nlt[i-1], Nst[i], aA, aR))
+        Nlt.append(agc_next_frame(Nlt[i-1], Nst[i], aA, aR))
     Nlt = jnp.array(Nlt)
     return Nlt
 
@@ -1156,7 +1151,7 @@ def synthesize_sound(frequency: float, duration: float, rate: int) -> jnp.ndarra
 
 
 def main_tv2018(filename_or_sound: Union[str, jnp.ndarray],
-                db_max: float, 
+                db_max: float,
                 filter_filename: str,
                 rate: int = None,
                 debug_plot: bool = False,
@@ -1181,7 +1176,6 @@ def main_tv2018(filename_or_sound: Union[str, jnp.ndarray],
         Calculated loudness metrics: short-term, long-term, highest loudness value
     """
     if isinstance(filename_or_sound, str):
-        file_name = filename_or_sound
         if filename_or_sound.startswith("synthesize_"):
             try:
                 parts = filename_or_sound.split("_")
@@ -1202,7 +1196,6 @@ def main_tv2018(filename_or_sound: Union[str, jnp.ndarray],
                                         "(e.g., 'synthesize_{}khz_{}ms').")
             data, rate = read_and_resample(filename_or_sound)
     elif isinstance(filename_or_sound, jnp.ndarray):
-        file_name = "user_input_signal"
         if not rate:
             raise ValueError("Rate must be specified when providing sound data directly.")
         data = filename_or_sound
@@ -1229,9 +1222,9 @@ def main_tv2018(filename_or_sound: Union[str, jnp.ndarray],
     for i in range(short_term_specific_loudness_left.shape[0]):
         _, left, right = \
           monaural_specific_loudness_to_binaural_loudness_025(
-          short_term_specific_loudness_left[i, :],
-          short_term_specific_loudness_right[i, :]
-        )
+            short_term_specific_loudness_left[i, :],
+            short_term_specific_loudness_right[i, :]
+          )
         left_list.append(left)
         left_list.append(right)
     short_term_specific_loudness_left = jnp.array(left_list)
@@ -1250,49 +1243,49 @@ def main_tv2018(filename_or_sound: Union[str, jnp.ndarray],
 
     # Plotting the results
     if debug_plot:
-      plt.figure()
-      plt.plot(range(len(short_term_loudness)), short_term_loudness,
-              'b-', label='Short-term loudness')
-      plt.plot(range(len(long_term_loudness)), long_term_loudness,
-              'r-', label='Long-term loudness')
-      plt.xlabel('time [ms]')
-      plt.ylabel('Loudness [sone]')
-      plt.legend()
-      # save plot to results folder
-      if debug_plot_filename:
-        plt.savefig(debug_plot_filename)
-                    
+        plt.figure()
+        plt.plot(range(len(short_term_loudness)), short_term_loudness,
+                 'b-', label='Short-term loudness')
+        plt.plot(range(len(long_term_loudness)), long_term_loudness,
+                 'r-', label='Long-term loudness')
+        plt.xlabel('time [ms]')
+        plt.ylabel('Loudness [sone]')
+        plt.legend()
+        # save plot to results folder
+        if debug_plot_filename:
+            plt.savefig(debug_plot_filename)
+
     # Writing results to text file
     if debug_summary_filename:
-      with open(debug_summary_filename, 'w') as fid:
-          fid.write(f"{debug_summary_filename}\n\n")
-          fid.write(f"Calibration level:      {db_max} "
-                    f"dB SPL (RMS level of a full-scale sinusoid)\n")
-          fid.write(f"Filename of FIR filter: {filter_filename}\n\n")
-          fid.write(f"Maximum of long-term loudness:  "
-                    f"{jnp.max(long_term_loudness):9.2f} sone\n")
-          fid.write(f"                                "
-                    f"{jnp.max(sone_to_phon_tv2015(long_term_loudness)):9.2f} phon\n")
-          fid.write(f"Maximum of short-term loudness: "
-                    f"{jnp.max(short_term_loudness):9.2f} sone\n")
-          fid.write(f"                                "
-                    f"{jnp.max(sone_to_phon_tv2015(short_term_loudness)):9.2f} phon\n\n")
-          fid.write("Loudness over time\n")
-          fid.write("1st column: time in milliseconds\n")
-          fid.write("2nd column: short-term loudness in sone\n")
-          fid.write("3rd column: short-term loudness level in phon\n")
-          fid.write("4th column: long-term loudness in sone\n")
-          fid.write("5th column: long-term loudness level in phon\n\n")
-          fid.write("   time   short-t. loudness    long-t. loudness\n")
-          fid.write("     ms      sone      phon      sone      phon\n")
-          for i in range(len(long_term_loudness)):
-              fid.write(f"{i:7.0f} {short_term_loudness[i]:9.2f} "
-                        f"{sone_to_phon_tv2015(short_term_loudness[i]):9.1f} "
-                        f"{long_term_loudness[i]:9.2f} "
-                        f"{sone_to_phon_tv2015(long_term_loudness[i]):9.1f}\n")
-          fid.write(f"max     {jnp.max(short_term_loudness):9.2f} "
-                    f"{jnp.max(sone_to_phon_tv2015(short_term_loudness)):9.1f} "
-                    f"{jnp.max(long_term_loudness):9.2f} "
-                    f"{jnp.max(sone_to_phon_tv2015(long_term_loudness)):9.1f}\n")
+        with open(debug_summary_filename, 'w') as fid:
+            fid.write(f"{debug_summary_filename}\n\n")
+            fid.write(f"Calibration level:      {db_max} "
+                      f"dB SPL (RMS level of a full-scale sinusoid)\n")
+            fid.write(f"Filename of FIR filter: {filter_filename}\n\n")
+            fid.write(f"Maximum of long-term loudness:  "
+                      f"{jnp.max(long_term_loudness):9.2f} sone\n")
+            fid.write(f"                                "
+                      f"{jnp.max(sone_to_phon_tv2015(long_term_loudness)):9.2f} phon\n")
+            fid.write(f"Maximum of short-term loudness: "
+                      f"{jnp.max(short_term_loudness):9.2f} sone\n")
+            fid.write(f"                                "
+                      f"{jnp.max(sone_to_phon_tv2015(short_term_loudness)):9.2f} phon\n\n")
+            fid.write("Loudness over time\n")
+            fid.write("1st column: time in milliseconds\n")
+            fid.write("2nd column: short-term loudness in sone\n")
+            fid.write("3rd column: short-term loudness level in phon\n")
+            fid.write("4th column: long-term loudness in sone\n")
+            fid.write("5th column: long-term loudness level in phon\n\n")
+            fid.write("   time   short-t. loudness    long-t. loudness\n")
+            fid.write("     ms      sone      phon      sone      phon\n")
+            for i in range(len(long_term_loudness)):
+                fid.write(f"{i:7.0f} {short_term_loudness[i]:9.2f} "
+                          f"{sone_to_phon_tv2015(short_term_loudness[i]):9.1f} "
+                          f"{long_term_loudness[i]:9.2f} "
+                          f"{sone_to_phon_tv2015(long_term_loudness[i]):9.1f}\n")
+            fid.write(f"max     {jnp.max(short_term_loudness):9.2f} "
+                      f"{jnp.max(sone_to_phon_tv2015(short_term_loudness)):9.1f} "
+                      f"{jnp.max(long_term_loudness):9.2f} "
+                      f"{jnp.max(sone_to_phon_tv2015(long_term_loudness)):9.1f}\n")
 
     return loudness, short_term_loudness, long_term_loudness
