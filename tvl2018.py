@@ -1,12 +1,12 @@
 import os
-import numpy as np
-from typing import List, Optional, Tuple, Union
-from scipy.io import wavfile
-from scipy.io import loadmat
-from scipy.signal import resample
-from scipy.signal import convolve
-from scipy.interpolate import interp1d, PchipInterpolator
+
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy.io import loadmat, wavfile
+from scipy.signal import convolve, resample
+from scipy.interpolate import PchipInterpolator, interp1d
+from typing import List, Optional, Tuple, Union
+
 
 sone_phon = \
     np.array([[0.000538, 0.0], [0.000566, 0.1], [0.000596, 0.2], [0.000627, 0.3],
@@ -337,11 +337,11 @@ def interpolation(xx: Union[List[float], np.ndarray],
                                    fill_value="extrapolate")
         elif method == 'pchip':
             interpolate = PchipInterpolator(xx, yy, extrapolate=True)
-        else: # Code never reaches here, but just in case 
+        else:  # Code shouldn't reach here, but just in case
             interpolate = interp1d(xx, yy, kind=method,
                                    fill_value="extrapolate")
         out = interpolate(x)
-    else: # Code also doesn't reach here 
+    else:  # Code also doesn't reach here
         # Repeat yy for all x if there's only one point
         out = np.full_like(x, yy)
 
@@ -726,8 +726,8 @@ def output_power_at_erb_numbers_025(input_levels: Union[List[float], np.ndarray]
 
     return excitation
 
-# This function is also never used, only sone to phon is called. 
 
+# This function is also never used, only sone to phon is called.
 def phon_to_sone_tv2015(input: Union[List[float], np.ndarray]) -> np.ndarray:
     """
     Converts Phon to Sone using predefined conversion table.
@@ -824,9 +824,8 @@ def signal_segment_to_spectrum(data: np.ndarray,
         frequency_mask[start_idx:end_idx, idx] = True
     frequency_mask = frequency_mask[:, :, np.newaxis]  # Shape: (npts//2+1, 6, 1)
 
-    i_combined_fft = intensity * 10**(db_max/10) * frequency_mask # n x 6 x 2
-    i_combined_fft = np.sum(i_combined_fft, axis=1) # n x 2
-    
+    i_combined_fft = intensity * 10**(db_max/10) * frequency_mask  # n x 6 x 2
+    i_combined_fft = np.sum(i_combined_fft, axis=1)  # n x 2
 
     # Take only components which are higher than max component level
     # minus 60 dB and higher than -30 dB SPL
@@ -1147,7 +1146,7 @@ def synthesize_sound(frequency: float, duration: float, rate: int) -> np.ndarray
 
 
 def main_tv2018(filename_or_sound: Union[str, np.ndarray],
-                db_max: float, 
+                db_max: float,
                 filter_filename: str,
                 rate: int = None,
                 debug_plot: bool = False,
@@ -1172,7 +1171,6 @@ def main_tv2018(filename_or_sound: Union[str, np.ndarray],
         Calculated loudness metrics: short-term, long-term, highest loudness value
     """
     if isinstance(filename_or_sound, str):
-        file_name = filename_or_sound
         if filename_or_sound.startswith("synthesize_"):
             try:
                 parts = filename_or_sound.split("_")
@@ -1193,7 +1191,6 @@ def main_tv2018(filename_or_sound: Union[str, np.ndarray],
                                         "(e.g., 'synthesize_{}khz_{}ms').")
             data, rate = read_and_resample(filename_or_sound)
     elif isinstance(filename_or_sound, np.ndarray):
-        file_name = "user_input_signal"
         if not rate:
             raise ValueError("Rate must be specified when providing sound data directly.")
         data = filename_or_sound
@@ -1235,49 +1232,49 @@ def main_tv2018(filename_or_sound: Union[str, np.ndarray],
 
     # Plotting the results
     if debug_plot:
-      plt.figure()
-      plt.plot(range(len(short_term_loudness)), short_term_loudness,
-              'b-', label='Short-term loudness')
-      plt.plot(range(len(long_term_loudness)), long_term_loudness,
-              'r-', label='Long-term loudness')
-      plt.xlabel('time [ms]')
-      plt.ylabel('Loudness [sone]')
-      plt.legend()
-      # save plot to results folder
-      if debug_plot_filename:
-        plt.savefig(debug_plot_filename)
-                    
+        plt.figure()
+        plt.plot(range(len(short_term_loudness)), short_term_loudness,
+                 'b-', label='Short-term loudness')
+        plt.plot(range(len(long_term_loudness)), long_term_loudness,
+                 'r-', label='Long-term loudness')
+        plt.xlabel('time [ms]')
+        plt.ylabel('Loudness [sone]')
+        plt.legend()
+        # save plot to results folder
+        if debug_plot_filename:
+            plt.savefig(debug_plot_filename)
+
     # Writing results to text file
     if debug_summary_filename:
-      with open(debug_summary_filename, 'w') as fid:
-          fid.write(f"{debug_summary_filename}\n\n")
-          fid.write(f"Calibration level:      {db_max} "
-                    f"dB SPL (RMS level of a full-scale sinusoid)\n")
-          fid.write(f"Filename of FIR filter: {filter_filename}\n\n")
-          fid.write(f"Maximum of long-term loudness:  "
-                    f"{np.max(long_term_loudness):9.2f} sone\n")
-          fid.write(f"                                "
-                    f"{np.max(sone_to_phon_tv2015(long_term_loudness)):9.2f} phon\n")
-          fid.write(f"Maximum of short-term loudness: "
-                    f"{np.max(short_term_loudness):9.2f} sone\n")
-          fid.write(f"                                "
-                    f"{np.max(sone_to_phon_tv2015(short_term_loudness)):9.2f} phon\n\n")
-          fid.write("Loudness over time\n")
-          fid.write("1st column: time in milliseconds\n")
-          fid.write("2nd column: short-term loudness in sone\n")
-          fid.write("3rd column: short-term loudness level in phon\n")
-          fid.write("4th column: long-term loudness in sone\n")
-          fid.write("5th column: long-term loudness level in phon\n\n")
-          fid.write("   time   short-t. loudness    long-t. loudness\n")
-          fid.write("     ms      sone      phon      sone      phon\n")
-          for i in range(len(long_term_loudness)):
-              fid.write(f"{i:7.0f} {short_term_loudness[i]:9.2f} "
-                        f"{sone_to_phon_tv2015(short_term_loudness[i]):9.1f} "
-                        f"{long_term_loudness[i]:9.2f} "
-                        f"{sone_to_phon_tv2015(long_term_loudness[i]):9.1f}\n")
-          fid.write(f"max     {np.max(short_term_loudness):9.2f} "
-                    f"{np.max(sone_to_phon_tv2015(short_term_loudness)):9.1f} "
-                    f"{np.max(long_term_loudness):9.2f} "
-                    f"{np.max(sone_to_phon_tv2015(long_term_loudness)):9.1f}\n")
+        with open(debug_summary_filename, 'w') as fid:
+            fid.write(f"{debug_summary_filename}\n\n")
+            fid.write(f"Calibration level:      {db_max} "
+                      f"dB SPL (RMS level of a full-scale sinusoid)\n")
+            fid.write(f"Filename of FIR filter: {filter_filename}\n\n")
+            fid.write(f"Maximum of long-term loudness:  "
+                      f"{np.max(long_term_loudness):9.2f} sone\n")
+            fid.write(f"                                "
+                      f"{np.max(sone_to_phon_tv2015(long_term_loudness)):9.2f} phon\n")
+            fid.write(f"Maximum of short-term loudness: "
+                      f"{np.max(short_term_loudness):9.2f} sone\n")
+            fid.write(f"                                "
+                      f"{np.max(sone_to_phon_tv2015(short_term_loudness)):9.2f} phon\n\n")
+            fid.write("Loudness over time\n")
+            fid.write("1st column: time in milliseconds\n")
+            fid.write("2nd column: short-term loudness in sone\n")
+            fid.write("3rd column: short-term loudness level in phon\n")
+            fid.write("4th column: long-term loudness in sone\n")
+            fid.write("5th column: long-term loudness level in phon\n\n")
+            fid.write("   time   short-t. loudness    long-t. loudness\n")
+            fid.write("     ms      sone      phon      sone      phon\n")
+            for i in range(len(long_term_loudness)):
+                fid.write(f"{i:7.0f} {short_term_loudness[i]:9.2f} "
+                          f"{sone_to_phon_tv2015(short_term_loudness[i]):9.1f} "
+                          f"{long_term_loudness[i]:9.2f} "
+                          f"{sone_to_phon_tv2015(long_term_loudness[i]):9.1f}\n")
+            fid.write(f"max     {np.max(short_term_loudness):9.2f} "
+                      f"{np.max(sone_to_phon_tv2015(short_term_loudness)):9.1f} "
+                      f"{np.max(long_term_loudness):9.2f} "
+                      f"{np.max(sone_to_phon_tv2015(long_term_loudness)):9.1f}\n")
 
     return loudness, short_term_loudness, long_term_loudness

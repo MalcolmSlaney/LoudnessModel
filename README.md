@@ -63,9 +63,61 @@ With the arguments above the main_tv2018 function creates two files: a textual s
 ![Loudness Plot](results/synthesize_1khz_100ms_50dB_loudness_plot.png)
 
 
-## V. ADDED TESTS AND OPTIMIZATION
+## V. TEST SUITE
 
-[to do]
+This test suite validates the implementation of the TVL2018 loudness model by covering a general overall test, precision tests, and individual utility functions.
+
+## Basic Test
+
+- **`test_basic_example`**: Tests the `main_tv2018` function with a 100ms synthesized 1 kHz tone at 50 dB SPL and 32k sample rate with free field transform, checking short-term and long-term loudness calculations. You can change inputs here to get different plots and summary files.
+
+## Baseline Comparison Tests
+
+These tests ensure that the core components of the loudness model produce accurate and consistent results by comparing to a set of predefined inputs. Specifically: 1 kHz tone at 50 db SPL and 32k sample rate with free-field transform. This is most useful when users make changes to tvl2018 but want to maintain the same overall functionality by verifying with a known accurate output. Each of the tests also include commented code for producing debug files and plots if needed. 
+
+- **`test_overall_loudness`**: Verifies that the overall loudness matches the expected maximum long-term loudness value.
+
+- **`test_short_term_loudness`**: Validates the first five values of the short-term loudness against expected results.
+
+- **`test_long_term_loudness`**: Validates the first five values of the long-term loudness against expected results.
+
+- **`test_signal_segment_to_spectrum`**: Confirms that the conversion of a signal segment to its spectrum matches expected frequency and level values.
+
+- **`test_spectrum_to_excitation_pattern_025_selected`**: Tests specific points of the excitation pattern generated from a given spectrum against expected values.
+
+- **`test_excitation_to_specific_loudness_binaural_025_selected`**: Validates the conversion from excitation patterns to specific loudness at selected indices.
+
+- **`test_filtered_signal_to_monaural_instantaneous_specific_loudness_selected`**: Checks instantaneous specific loudness calculations for both ears at selected segments and ERB indices.
+
+## Utility Function Tests
+
+These tests focus on the correctness of smaller functions that support the main loudness calculations.
+
+- **`test_get_alpha_and_p_functions`**: Ensures that the `get_alpha` and `get_p` functions return positive values of appropriate lengths.
+
+- **`test_interpolation`**: Verifies the `interpolation` function using 'pchip' and 'linear' methods, asserting that the standard error remains within acceptable limits.
+
+- **`test_agc_functions`**: Validates the automatic gain control functions (`agc_next_frame_of_vector` and `agc_next_frame`) using known inputs and expected outputs.
+
+- **`test_input_level_per_erb`**: Tests the calculation of input levels per ERB, ensuring outputs are non-negative and correctly sized.
+
+- **`test_synthesize_sound`**: Checks the sound synthesis function for correct output shape and amplitude scaling.
+
+- **`test_excitation_threshold_tvl`**: Validates excitation threshold calculations against expected values.
+
+- **`test_get_g_tvl`**: Tests the cochlear amplifier gain calculations by comparing computed gains to expected results based on known formulas.
+
+## Running the Tests
+
+To run the test suite, execute the following command:
+
+```
+python tvl2018_test.py
+```
+
+Ensure all dependencies are installed and the `tvl2018` module is accessible. The tests can output results to the `results` directory for further inspection if needed.
+
+
 
 ## VI. SUBROUTINES
 
