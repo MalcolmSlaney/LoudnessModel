@@ -823,12 +823,17 @@ def signal_segment_to_spectrum(data: jnp.ndarray,
     intensity *= d_hann_correction
     # Correction for window length, now n x 6 x 2
     intensity *= jnp.expand_dims(2**jnp.arange(6), axis=[0, 2])
-    frequency_mask = jnp.zeros((len(f), 6), dtype=bool)
+    # frequency_mask = jnp.zeros((len(f), 6), dtype=bool)
+    frequency_masks = []
+    i = jnp.arange(len(f))
     for idx in range(6):
         start_idx = v_limiting_indizes[idx]
         end_idx = v_limiting_indizes[idx + 1]
-        frequency_mask[start_idx:end_idx, idx] = True
+        # frequency_mask[start_idx:end_idx, idx] = True
+        frequency_masks.append(jnp.logical_and(i >= start_idx, i<end_idx))
+    frequency_mask = jnp.stack(frequency_masks, axis=1)
     frequency_mask = frequency_mask[:, :, jnp.newaxis]  # Shape: (npts//2+1, 6, 1)
+    print(f'frequency_mask shape is {frequency_mask.shape}')
 
     i_combined_fft = intensity * 10**(db_max/10) * frequency_mask  # n x 6 x 2
     i_combined_fft = jnp.sum(i_combined_fft, axis=1)  # n x 2
