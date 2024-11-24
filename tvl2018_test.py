@@ -5,7 +5,8 @@ import numpy as np
 from absl.testing import absltest
 
 import tvl2018 as tvl
-
+import scipy.signal as signal
+import scipy.optimize as optimize
 
 class LoudnessModelTests(absltest.TestCase):
     """Test suite for the TVL2018 loudness model implementation."""
@@ -136,6 +137,209 @@ class LoudnessModelTests(absltest.TestCase):
                 2.8666350625317323e-13   # ist_loudness_right[100][1]
             ]),
         }
+
+    def test_peak_constrained_power_optimization_synthesized(self):
+        """Test maximizing power/loudness while maintaining peak amplitude constraint using phase adjustments on a synthesized signal.
+
+        This test creates a baseline harmonic signal with harmonics in cosine phase and applies various phase adjustments,
+        including an all-pass filter, random phases, progressive phases, and quadratic phases, to maximize loudness while
+        maintaining the peak amplitude constraint.
+
+        It compares the RMS and loudness of the phase-adjusted signals with the baseline.
+        """
+        # Parameters
+        duration, rate = 0.1, 32000  # seconds, Hz
+        fundamental = 100  # Hz
+        n_harmonics = 10
+        peak_constraint = 0.8
+        db_max = 50
+        filter_filename = 'transfer functions/ff_32000.mat'
+
+        def process_signal(mono_signal):
+            """Process mono signal: normalize, make stereo, calculate metrics."""
+            signal = normalize_signal(mono_signal)
+            stereo = np.column_stack((signal, signal))
+            rms = np.sqrt(np.mean(signal ** 2))
+            loudness, _, _ = tvl.main_tv2018(stereo, db_max, filter_filename, rate=rate)
+            return signal, rms, loudness
+
+        def create_signal(magnitudes, phases):
+            """Create harmonic signal."""
+            t = np.linspace(0, duration, int(rate * duration), endpoint=False)
+            signal = np.zeros(len(t))
+            for h in range(n_harmonics):
+                freq = fundamental * (h + 1)
+                signal += magnitudes[h] * np.cos(2 * np.pi * freq * t + phases[h])
+            return signal
+
+        def normalize_signal(signal):
+            """Normalize signal to peak constraint."""
+            return signal * (peak_constraint / np.max(np.abs(signal)))
+
+        # Create baseline (cosine phase)
+        base_magnitudes = np.array([1.0 / (h + 1) for h in range(n_harmonics)])
+        baseline = create_signal(base_magnitudes, np.zeros(n_harmonics))
+        baseline_signal, baseline_rms, baseline_loudness = process_signal(baseline)
+
+        results = [{'name': 'Baseline', 
+                    'signal': baseline_signal,
+                    'rms': baseline_rms, 
+                    'loudness': baseline_loudness}]
+
+        # All-pass filter
+        freq_shift, bandwidth = 500, 250  # Hz
+        omega_d = 2 * np.pi * freq_shift / rate
+        bw = 2 * np.pi * bandwidth / rate
+        
+        c = (np.tan(bw / 2) - 1) / (np.tan(bw / 2) + 1)
+        d = -np.cos(omega_d)
+        b_allpass = np.array([-c, d * (1 - c), 1])
+        a_allpass = np.array([1, d * (1 - c), -c])
+        
+        filtered = signal.lfilter(b_allpass, a_allpass, baseline)
+        filtered_signal, filtered_rms, filtered_loudness = process_signal(filtered)
+        results.append({
+            'name': 'All-Pass Filter',
+            'signal': filtered_signal,
+            'rms': filtered_rms,
+            'loudness': filtered_loudness
+        })
+
+        # Random phases
+        np.random.seed(42)
+        random = create_signal(base_magnitudes, np.random.uniform(0, 2 * np.pi, n_harmonics))
+        random_signal, random_rms, random_loudness = process_signal(random)
+        results.append({
+            'name': 'Random Phases',
+            'signal': random_signal,
+            'rms': random_rms,
+            'loudness': random_loudness
+        })
+
+        # Quadratic phases
+        quadratic_phases = ((np.arange(n_harmonics) ** 2) * np.pi) / n_harmonics
+        quadratic = create_signal(base_magnitudes, quadratic_phases)
+        quadratic_signal, quadratic_rms, quadratic_loudness = process_signal(quadratic)
+        results.append({
+            'name': 'Quadratic Phases',
+            'signal': quadratic_signal,
+            'rms': quadratic_rms,
+            'loudness': quadratic_loudness
+        })
+
+        # Find best result and verify improvement
+        best_result = max(results, key=lambda x: x['rms'])
+        self.assertGreater(best_result['rms'], baseline_rms,
+                          "Best signal should have higher RMS than baseline")
+        self.assertGreater(best_result['loudness'], baseline_loudness,
+                          "Best signal should have higher loudness than baseline")
+
+        # Plot results
+        t = np.linspace(0, duration, len(baseline_signal))
+        plt.figure(figsize=(15, 10))
+        
+        # Time domain plots (showing all signals)
+        plt.subplot(2, 1, 1)
+        for result in results:
+            plt.plot(t[:1000], result['signal'][:1000], label=result['name'])
+        plt.title('Time Domain Signals (First 1000 Samples)')
+        plt.xlabel('Time (s)')
+        plt.ylabel('Amplitude')
+        plt.grid(True)
+        plt.legend()
+
+        # RMS comparison
+        names = [r['name'] for r in results]
+        plt.subplot(2, 2, 3)
+        plt.bar(names, [r['rms'] for r in results])
+        plt.xticks(rotation=45)
+        plt.ylabel('RMS')
+        plt.title('RMS Comparison')
+
+        # Loudness comparison
+        plt.subplot(2, 2, 4)
+        plt.bar(names, [r['loudness'] for r in results])
+        plt.xticks(rotation=45)
+        plt.ylabel('Loudness (sones)')
+        plt.title('Loudness Comparison')
+
+        plt.tight_layout()
+        plt.savefig('results/peak_constrained_power_optimization_synthesized.png')
+        plt.close()
+
+        print("\nResults Summary:")
+        for result in results:
+            print(f"{result['name']}:")
+            print(f"  RMS: {result['rms']:.6f}")
+            print(f"  Loudness: {result['loudness']:.6f} sone")
+            print(f"  RMS change from baseline: {((result['rms']/baseline_rms - 1)*100):.1f}%")
+            print(f"  Loudness change from baseline: {((result['loudness']/baseline_loudness - 1)*100):.1f}%")
+
+
+    def test_peak_constrained_power_optimization_speech(self):
+        """Test maximizing speech power/loudness through all-pass filtering."""
+        peak_constraint = 0.8
+        db_max = 50
+        filter_filename = 'transfer functions/ff_32000.mat'
+
+        def process_speech(signal):
+            """Process speech signal: normalize, calculate metrics."""
+            if signal.ndim == 1:
+                signal = np.column_stack((signal, signal))
+            signal = signal * (peak_constraint / np.max(np.abs(signal)))
+            rms = np.sqrt(np.mean(signal ** 2))
+            loudness, _, _ = tvl.main_tv2018(signal, db_max, filter_filename, 
+                                            rate=rate_speech)
+            return signal, rms, loudness
+
+        # Load and process speech
+        speech_signal, rate_speech = tvl.read_and_resample('speech.wav')
+        speech, speech_rms, speech_loudness = process_speech(speech_signal)
+
+        # Apply second-order all-pass filter
+        freq_shift, bandwidth = 1000, 500  # Hz
+        omega_d = 2 * np.pi * freq_shift / rate_speech
+        bw = 2 * np.pi * bandwidth / rate_speech
+        
+        c = (np.tan(bw / 2) - 1) / (np.tan(bw / 2) + 1)
+        d = -np.cos(omega_d)
+        b = np.array([-c, d * (1 - c), 1])
+        a = np.array([1, d * (1 - c), -c])
+
+        filtered = signal.lfilter(b, a, speech[:, 0])
+        filtered_speech, filtered_rms, filtered_loudness = process_speech(filtered)
+
+        # Verify improvement
+        self.assertGreater(filtered_rms, speech_rms,
+                          "Filtered speech should have higher RMS")
+        self.assertGreater(filtered_loudness, speech_loudness,
+                          "Filtered speech should have higher loudness")
+
+        # Plot results
+        plt.figure(figsize=(15, 10))
+        t = np.arange(len(speech)) / rate_speech
+
+        plt.subplot(2, 1, 1)
+        plt.plot(t, speech[:, 0], label='Original')
+        plt.plot(t, filtered_speech[:, 0], label='Filtered')
+        plt.title('Speech Signals')
+        plt.grid(True)
+        plt.legend()
+
+        names = ['Original', 'Filtered']
+        plt.subplot(2, 2, 3)
+        plt.bar(names, [speech_rms, filtered_rms])
+        plt.title('RMS Comparison')
+
+        plt.subplot(2, 2, 4)
+        plt.bar(names, [speech_loudness, filtered_loudness])
+        plt.title('Loudness Comparison')
+
+        plt.tight_layout()
+        plt.savefig('results/peak_constrained_power_optimization_speech.png')
+        plt.close()
+
+
 
     def test_overall_loudness(self):
         """Test overall loudness against expected maximum long-term loudness."""

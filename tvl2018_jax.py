@@ -9,7 +9,6 @@ from scipy.signal import convolve, resample
 from scipy.interpolate import PchipInterpolator, interp1d
 from typing import List, Optional, Tuple, Union
 
-
 sone_phon = \
     jnp.array([[0.000538, 0.0], [0.000566, 0.1], [0.000596, 0.2], [0.000627, 0.3],
               [0.000660, 0.4], [0.000694, 0.5], [0.000730, 0.6], [0.000768, 0.7],
@@ -833,7 +832,6 @@ def signal_segment_to_spectrum(data: jnp.ndarray,
         frequency_masks.append(jnp.logical_and(i >= start_idx, i<end_idx))
     frequency_mask = jnp.stack(frequency_masks, axis=1)
     frequency_mask = frequency_mask[:, :, jnp.newaxis]  # Shape: (npts//2+1, 6, 1)
-    print(f'frequency_mask shape is {frequency_mask.shape}')
 
     i_combined_fft = intensity * 10**(db_max/10) * frequency_mask  # n x 6 x 2
     i_combined_fft = jnp.sum(i_combined_fft, axis=1)  # n x 2
@@ -1016,6 +1014,7 @@ def filtered_signal_to_monaural_instantaneous_specific_loudness(
     n_samples_per_segment = int(rate / 1000 * n_segment_duration)  # 32
     n_segments_in_signal = int(
         jnp.floor((len(signal) - npts) / rate * 1000 / n_segment_duration))
+        
     # Hann windows for 6 FFTs; 1st column 64 ms, 6th column 2 ms
     w_hann = []
     for i in range(6):
@@ -1222,36 +1221,37 @@ def main_tv2018(filename_or_sound: Union[str, jnp.ndarray],
         instantaneous_specific_loudness_to_shortterm_specific_loudness(
             instantaneous_specific_loudness_right)
 
-    left_list = []
-    right_list = []
+    short_term_loudness_left_adjusted = jnp.zeros_like(short_term_loudness_left)
+    short_term_loudness_right_adjusted = jnp.zeros_like(short_term_loudness_right)
+
     for i in range(short_term_specific_loudness_left.shape[0]):
         _, left, right = \
           monaural_specific_loudness_to_binaural_loudness_025(
             short_term_specific_loudness_left[i, :],
             short_term_specific_loudness_right[i, :]
           )
-        left_list.append(left)
-        left_list.append(right)
-    short_term_specific_loudness_left = jnp.array(left_list)
-    short_term_specific_loudness_right = jnp.array(right_list)
+        short_term_loudness_left_adjusted = short_term_loudness_left_adjusted.at[i].set(left)
+        short_term_loudness_right_adjusted = short_term_loudness_right_adjusted.at[i].set(right)
 
     long_term_loudness_left = shortterm_loudness_to_longterm_loudness(
-        short_term_loudness_left.flatten())
+        short_term_loudness_left_adjusted.flatten())
     long_term_loudness_right = shortterm_loudness_to_longterm_loudness(
-        short_term_loudness_right.flatten())
+        short_term_loudness_right_adjusted.flatten())
 
     long_term_loudness = long_term_loudness_left + long_term_loudness_right
     loudness = jnp.max(long_term_loudness)
 
     short_term_loudness = \
-        short_term_loudness_left.flatten() + short_term_loudness_right.flatten()
+        short_term_loudness_left_adjusted.flatten() + short_term_loudness_right_adjusted.flatten()
 
+    short_term_loudness_np = np.asarray(short_term_loudness)
+    long_term_loudness_np = np.asarray(long_term_loudness)
     # Plotting the results
     if debug_plot:
         plt.figure()
-        plt.plot(range(len(short_term_loudness)), short_term_loudness,
+        plt.plot(range(len(short_term_loudness_np)), short_term_loudness_np,
                  'b-', label='Short-term loudness')
-        plt.plot(range(len(long_term_loudness)), long_term_loudness,
+        plt.plot(range(len(long_term_loudness_np)), long_term_loudness_np,
                  'r-', label='Long-term loudness')
         plt.xlabel('time [ms]')
         plt.ylabel('Loudness [sone]')
