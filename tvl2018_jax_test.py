@@ -221,7 +221,7 @@ class LoudnessModelTests(absltest.TestCase):
         best_rms = jnp.maximum(filtered_rms, random_rms)
         best_loudness = jnp.maximum(filtered_loudness, random_loudness)
 
-        # Assertions (assuming within a testing framework like absltest)
+        # Assertions
         self.assertGreater(best_rms, baseline_rms,
                           "Phase adjustment should increase RMS")
         self.assertGreater(best_loudness, baseline_loudness,
