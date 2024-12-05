@@ -5,7 +5,7 @@ import numpy as np
 from absl.testing import absltest
 
 import tvl2018 as tvl
-
+import scipy.signal
 
 class LoudnessModelTests(absltest.TestCase):
     """Test suite for the TVL2018 loudness model implementation."""
@@ -53,7 +53,7 @@ class LoudnessModelTests(absltest.TestCase):
         self.assertTrue(os.path.exists(plot_filename))
 
     # DO NOT MODIFY BELOW TESTS INPUT
-    # The tests below compare to a set of expected values
+    # The tests below compare to a set of defined expected values
     # based on the set inputs below as a baseline for future changes
 
     @classmethod
@@ -92,7 +92,6 @@ class LoudnessModelTests(absltest.TestCase):
         cls.v_limiting_f = [20, 80, 500, 1250, 2540, 4050, 15000]
         cls.v_limiting_indices = [int(f / (cls.sample_rate / cls.npts)) + 1 for f in cls.v_limiting_f]
 
-        # Expected Outputs from generate_expected_outputs.py (updated for 100 ms duration)
         cls.expected_outputs = {
             'loudness': 0.5513768526010244,  # sone
             'short_term_loudness_first5': np.array(
@@ -136,6 +135,65 @@ class LoudnessModelTests(absltest.TestCase):
                 2.8666350625317323e-13   # ist_loudness_right[100][1]
             ]),
         }
+
+    def test_peak_constrained_power(self):
+        """Test that phase adjustments increase power/loudness while maintaining peak constraint."""
+        # Parameters
+        duration, rate = 0.1, 32000  # seconds, Hz
+        fundamental = 100  # Hz
+        n_harmonics = 10
+        peak_constraint = 0.8
+        db_max = 50
+        filter_filename = 'transfer functions/ff_32000.mat'
+
+        def process_signal(mono_signal):
+            """Process mono signal: normalize, make stereo, calculate metrics."""
+            signal = mono_signal * (peak_constraint / np.max(np.abs(mono_signal)))
+            stereo = np.column_stack((signal, signal))
+            rms = np.sqrt(np.mean(signal ** 2))
+            loudness, _, _ = tvl.main_tv2018(stereo, db_max, filter_filename, rate=rate)
+            return rms, loudness
+
+        def create_signal(magnitudes, phases):
+            """Create harmonic signal."""
+            t = np.linspace(0, duration, int(rate * duration), endpoint=False)
+            signal = np.zeros(len(t))
+            for h in range(n_harmonics):
+                freq = fundamental * (h + 1)
+                signal += magnitudes[h] * np.cos(2 * np.pi * freq * t + phases[h])
+            return signal
+
+        # Create baseline (cosine phase)
+        base_magnitudes = np.array([1.0 / (h + 1) for h in range(n_harmonics)])
+        baseline = create_signal(base_magnitudes, np.zeros(n_harmonics))
+        baseline_rms, baseline_loudness = process_signal(baseline)
+
+        # All-pass filter
+        freq_shift, bandwidth = 500, 250  # Hz
+        omega_d = 2 * np.pi * freq_shift / rate
+        bw = 2 * np.pi * bandwidth / rate
+        c = (np.tan(bw / 2) - 1) / (np.tan(bw / 2) + 1)
+        d = -np.cos(omega_d)
+        b_allpass = np.array([-c, d * (1 - c), 1])
+        a_allpass = np.array([1, d * (1 - c), -c])
+        
+        filtered = scipy.signal.lfilter(b_allpass, a_allpass, baseline)
+        filtered_rms, filtered_loudness = process_signal(filtered)
+
+        # Random phases
+        np.random.seed(42)
+        random = create_signal(base_magnitudes, np.random.uniform(0, 2 * np.pi, n_harmonics))
+        random_rms, random_loudness = process_signal(random)
+
+        # Test that at least one method improves RMS and loudness
+        best_rms = max(filtered_rms, random_rms)
+        best_loudness = max(filtered_loudness, random_loudness)
+
+        self.assertGreater(best_rms, baseline_rms,
+                          "Phase adjustment should increase RMS")
+        self.assertGreater(best_loudness, baseline_loudness,
+                          "Phase adjustment should increase loudness")
+
 
     def test_overall_loudness(self):
         """Test overall loudness against expected maximum long-term loudness."""
