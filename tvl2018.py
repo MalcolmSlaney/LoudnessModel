@@ -1237,12 +1237,17 @@ def main_tv2018(filename_or_sound: Union[str, np.ndarray],
                  'b-', label='Short-term loudness')
         plt.plot(range(len(long_term_loudness)), long_term_loudness,
                  'r-', label='Long-term loudness')
-        plt.xlabel('time [ms]')
-        plt.ylabel('Loudness [sone]')
+        plt.xlabel('Time (ms)')
+        plt.ylabel('Loudness (sone)')
+        plt.title(f'Loudness Analysis: {filename_or_sound}\nReference Level: {db_max} dB SPL')
         plt.legend()
+        plt.grid(True)
+        plt.show
         # save plot to results folder
         if debug_plot_filename:
             plt.savefig(debug_plot_filename)
+            print(f"\nPlot saved to: {debug_plot_filename}")
+
 
     # Writing results to text file
     if debug_summary_filename:
@@ -1276,5 +1281,7 @@ def main_tv2018(filename_or_sound: Union[str, np.ndarray],
                       f"{np.max(sone_to_phon_tv2015(short_term_loudness)):9.1f} "
                       f"{np.max(long_term_loudness):9.2f} "
                       f"{np.max(sone_to_phon_tv2015(long_term_loudness)):9.1f}\n")
+        print(f"Summary saved to: {debug_summary_filename}")
+
 
     return loudness, short_term_loudness, long_term_loudness
