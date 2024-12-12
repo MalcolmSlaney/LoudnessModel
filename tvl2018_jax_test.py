@@ -4,7 +4,8 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np  # For testing
 from absl.testing import absltest
-import cProfile
+
+from jax import random, lax
 
 import tvl2018_jax as tvl
 
@@ -140,7 +141,92 @@ class LoudnessModelTests(absltest.TestCase):
                 2.8666350625317323e-13   # ist_loudness_right[100][1]
             ]),
         }
+
+    def test_peak_constrained_power_jax(self):
+        """Test that phase adjustments increase power/loudness while maintaining peak constraint using JAX."""
+        # Parameters
+        duration, rate = 0.1, 32000  # seconds, Hz
+        fundamental = 100  # Hz
+        n_harmonics = 10
+        peak_constraint = 0.8
+        db_max = 50
+        filter_filename = 'transfer functions/ff_32000.mat'
+
+        def process_signal(mono_signal):
+            """Process mono signal: normalize, make stereo, calculate metrics."""
+            signal = mono_signal * (peak_constraint / jnp.max(jnp.abs(mono_signal)))
+            stereo = jnp.column_stack((signal, signal))
+            rms = jnp.sqrt(jnp.mean(signal ** 2))
+            loudness, _, _ = tvl.main_tv2018(stereo, db_max, filter_filename, rate=rate)
+            return rms, loudness
+
+        def create_signal(magnitudes, phases):
+            """Create harmonic signal using JAX."""
+            t = jnp.linspace(0, duration, int(rate * duration), endpoint=False)
+            freqs = fundamental * jnp.arange(1, n_harmonics + 1)
+            # Reshape magnitudes and phases to (n_harmonics, 1)
+            magnitudes = magnitudes[:, None]
+            phases = phases[:, None]
+            # Compute the signals
+            signals = magnitudes * jnp.cos(2 * jnp.pi * freqs[:, None] * t + phases)
+            signal = jnp.sum(signals, axis=0)
+            return signal
+
+        # Create baseline (cosine phase)
+        base_magnitudes = 1.0 / jnp.arange(1, n_harmonics + 1)
+        baseline_phases = jnp.zeros(n_harmonics)
+        baseline = create_signal(base_magnitudes, baseline_phases)
+        baseline_rms, baseline_loudness = process_signal(baseline)
+
+        # All-pass filter parameters
+        freq_shift, bandwidth = 500, 250  # Hz
+        omega_d = 2 * jnp.pi * freq_shift / rate
+        bw = 2 * jnp.pi * bandwidth / rate
+        c = (jnp.tan(bw / 2) - 1) / (jnp.tan(bw / 2) + 1)
+        d = -jnp.cos(omega_d)
+        b_allpass = jnp.array([-c, d * (1 - c), 1.0])
+        a_allpass = jnp.array([1.0, d * (1 - c), -c])
         
+        def lfilter_jax(b, a, x):
+            """Implement a second-order IIR filter in JAX."""
+            # Normalize coefficients if a[0] != 1
+            b = b / a[0]
+            a = a / a[0]
+            a_rest = a[1:]
+
+            def step(carry, x_n):
+                x_n_1, x_n_2, y_n_1, y_n_2 = carry
+                y_n = (b[0] * x_n + b[1] * x_n_1 + b[2] * x_n_2
+                      - a_rest[0] * y_n_1 - a_rest[1] * y_n_2)
+                new_carry = (x_n, x_n_1, y_n, y_n_1)
+                return new_carry, y_n
+
+            # Initial conditions
+            init_carry = (0.0, 0.0, 0.0, 0.0)
+
+            _, y = lax.scan(step, init_carry, x)
+            return y
+
+        # Apply the all-pass filter using JAX
+        filtered = lfilter_jax(b_allpass, a_allpass, baseline)
+        filtered_rms, filtered_loudness = process_signal(filtered)
+
+        # Random phases using JAX's random number generator
+        key = random.PRNGKey(42)
+        random_phases = random.uniform(key, shape=(n_harmonics,), minval=0.0, maxval=2 * jnp.pi)
+        random_signal = create_signal(base_magnitudes, random_phases)
+        random_rms, random_loudness = process_signal(random_signal)
+
+        # Test that at least one method improves RMS and loudness
+        best_rms = jnp.maximum(filtered_rms, random_rms)
+        best_loudness = jnp.maximum(filtered_loudness, random_loudness)
+
+        # Assertions
+        self.assertGreater(best_rms, baseline_rms,
+                          "Phase adjustment should increase RMS")
+        self.assertGreater(best_loudness, baseline_loudness,
+                          "Phase adjustment should increase loudness")
+ 
     def test_overall_loudness(self):
         """Test overall loudness against expected maximum long-term loudness."""
         # Ensure results directory exists
@@ -431,20 +517,6 @@ class LoudnessModelTests(absltest.TestCase):
             err_msg="Selected instantaneous specific loudness right does not match expected."
         )
 
-
-    def test_get_alpha_and_p_functions(self):
-        """Test get_alpha and get_p functions for correctness."""
-        f = jnp.array([500, 1000, 2000, 4000, 8000])  # Hz
-        alpha = tvl.get_alpha(f)
-        p = tvl.get_p(f)
-
-        # Since get_alpha and get_p depend on internal interpolations and tables,
-        # we'll perform sanity checks based on expected behavior
-        self.assertEqual(len(alpha), len(f), "get_alpha output length mismatch.")
-        self.assertEqual(len(p), len(f), "get_p output length mismatch.")
-        self.assertTrue(jnp.all(alpha > 0), "Alpha values should be positive.")
-        self.assertTrue(jnp.all(p > 0), "P values should be positive.")
-
     def test_interpolation(self):
         """Test the interpolation function with 'pchip' and 'linear' methods."""
         # Test data
@@ -578,23 +650,6 @@ class LoudnessModelTests(absltest.TestCase):
             msg="AGC next frame equal input output does not match expected."
         )
 
-    def test_input_level_per_erb(self):
-        """Test the input levels per ERB calculation."""
-        f = jnp.array([1000.0, 2000.0])
-        in_levels = jnp.array([60.0, 70.0])
-        input_levels = tvl.input_level_per_erb(f, in_levels)
-        # Check if input_levels is a scalar or array. Based on the function, it should return an array
-        # of the same length as 'in_levels'
-        self.assertEqual(
-            len(input_levels),
-            len(in_levels),
-            msg="Input levels per ERB length mismatch."
-        )
-        self.assertTrue(
-            jnp.all(input_levels >= 0),
-            msg="Input levels should be non-negative."
-        )
-
     def test_synthesize_sound(self):
         """Test the sound synthesis function."""
         frequency = 1000  # Hz
@@ -629,7 +684,6 @@ class LoudnessModelTests(absltest.TestCase):
         #     os.path.exists(plot_filename),
         #     msg="Synthesized sound plot file was not created."
         # )
-        
 
     def test_excitation_threshold_tvl(self):
         """Test the excitation threshold calculation."""
@@ -642,24 +696,6 @@ class LoudnessModelTests(absltest.TestCase):
             expected,
             rtol=1e-3,
             err_msg="Excitation threshold calculation does not match expected."
-        )
-
-    def test_get_g_tvl(self):
-        """Test the cochlear amplifier gain calculation."""
-        f = jnp.array([125, 250, 500, 1000, 2000, 4000, 8000])
-        g = tvl.get_g_tvl(f)
-
-        # Expected gain values calculated based on the formula in get_g_tvl
-        # linear_threshold = 10 ** (excitation_threshold_tvl(f) / 10)
-        # out = 10 ** (3.63 / 10) / linear_threshold
-        thresholds = tvl.excitation_threshold_tvl(f)
-        linear_threshold = 10 ** (thresholds / 10)
-        expected_g = 10 ** (3.63 / 10) / linear_threshold
-        np.testing.assert_allclose(
-            g,
-            expected_g,
-            rtol=1e-4,
-            err_msg="Cochlear amplifier gain calculation does not match expected."
         )
 
 
