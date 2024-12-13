@@ -39,6 +39,9 @@ Loudness is influenced by multiple factors, including frequency, duration, and t
 #### Time Constants in the TVL2018 Model
 According to Moore et al. (2018), the model includes "three stages with different degrees of temporal smoothing, corresponding to instantaneous, short-term, and long-term loudness." The paper states "Short-term loudness is meant to represent the loudness of a short segment of sound, such as a word or a single musical note, whereas long-term loudness is meant to represent the overall loudness of a longer segment of sound, such as a sentence or a musical phrase."
 
+Attack time (Ta/Tal) = how quickly the system responds to increases in level
+Release time (Tr/Trl) = how quickly it responds to decreases in level
+
 #### Original Constants
 
 The original model used:
