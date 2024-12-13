@@ -36,33 +36,31 @@ The model calculates both short-term and long-term loudness, reflecting the comp
 
 Loudness is influenced by multiple factors, including frequency, duration, and the phase relationships of sounds. Higher frequencies are often perceived as louder at the same sound pressure level (SPL) compared to lower frequencies, and longer sounds tend to be perceived as louder due to temporal integration. The model uses units such as sone and phon to quantify loudness, with sones representing perceived loudness on a linear scale (e.g., doubling in sones means doubling in perceived loudness) and phons representing equal loudness contours across different frequencies. Additionally, binaural loudness is considered—sounds perceived with both ears are often louder than those heard with just one ear.
 
-#### Short-term Loudness Constants
+#### Time Constants in the TVL2018 Model
+According to Moore et al. (2018), the model includes "three stages with different degrees of temporal smoothing, corresponding to instantaneous, short-term, and long-term loudness." The paper states "Short-term loudness is meant to represent the loudness of a short segment of sound, such as a word or a single musical note, whereas long-term loudness is meant to represent the overall loudness of a longer segment of sound, such as a sentence or a musical phrase."
 
-Attack time: ~22ms
+Attack time (Ta/Tal) = how quickly the system responds to increases in level
+Release time (Tr/Trl) = how quickly it responds to decreases in level
 
-Release time: Originally 50ms, modified to 30ms to better fit experimental data
+#### Original Constants
 
-These constants were validated through experiments measuring loudness perception of amplitude-modulated sounds. Moore et al. (2018) found that these values accurately predicted:
+The original model used:
 
-* Detection of gaps in broadband noise 
-* Perception of amplitude modulation for modulation rates up to about 40 Hz 
-* Temporal resolution in forward and backward masking experiments 
+Short-term: Ta = 22 ms (aa = 0.045), Tr = 50 ms (ar = 0.02)
 
-The shorter time constants allow the model to track rapid changes in sound intensity that humans can perceive, such as individual syllables in speech or notes in music.
+Long-term: Tal = 99 ms (aal = 0.01), Trl = 2000 ms (arl = 0.0005)
 
-#### Long-term Loudness Constants
+These were chosen to "give reasonable predictions of the way that loudness varies with duration" and "give reasonably accurate predictions of the overall loudness of sounds that are AM at low rates."
 
-Attack time: 99ms
+#### Modified Constants
 
-Release time: 751ms
+After optimization to better fit experimental data:
 
-These constants were determined through experiments measuring overall loudness judgments of:
+Short-term: Ta = 22 ms (aa = 0.045), Tr = 30 ms (ar = 0.033)
 
-* Speech samples with varying dynamics 
-* Music passages with different temporal patterns 
-* Environmental sounds with fluctuating levels 
+Long-term: Tal = 99 ms (aal = 0.01), Trl = 751 ms (arl = 0.00133)
 
-Crucially, when subjects were asked to judge the overall loudness of these sounds, their responses correlated strongly with the long-term loudness values using these time constants.
+The paper doesn't provide explicit scientific justification for using two specific time constants. The closest it comes is describing their functional purposes - short-term for individual words/notes and long-term for sentences/phrases. The time constants appear to be empirically determined rather than derived from fundamental auditory principles. Moore et al. (2018) focused on refining these values through experimental data fitting rather than explaining their theoretical basis.
 
 ### Why Use This Model?
 
