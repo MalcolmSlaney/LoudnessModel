@@ -18,8 +18,10 @@ VIII. JAX </br>
 IX. REFERENCES </br>
 
 ## I. INTRODUCTION 
-This code implements a model of time-varying auditory loudness.
-The Python code is based on an original implementation in MATLAB, translated using various Python libraries (NumPy, SciPy, JAX etc.)
+This code implements a model of time-varying auditory loudness in Python.
+The Python code is based on an original implementation in MATLAB, 
+translated using two different computational libraries: 
+[Numpy](https://numpy.org/) and [JAX](https://jax.readthedocs.io/en/latest/).
 
 The code calculates loudness according to the model described by Moore et 
 al. (2016), but with the modified time constants described by Moore et al. (2018). It was
@@ -34,13 +36,26 @@ https://www.psychol.cam.ac.uk/hearing#programs
 
 The model calculates both short-term and long-term loudness, reflecting the complexity of human loudness perception. Short-term loudness captures rapid changes and moment-to-moment variations, eg. syllables or single notes of music, while long-term loudness provides an overall impression of sound over extended periods. These two metrics together help in comprehending how sound intensity and perception change over time, addressing both immediate and sustained auditory experiences.
 
-Loudness is influenced by multiple factors, including frequency, duration, and the phase relationships of sounds. Higher frequencies are often perceived as louder at the same sound pressure level (SPL) compared to lower frequencies, and longer sounds tend to be perceived as louder due to temporal integration. The model uses units such as sone and phon to quantify loudness, with sones representing perceived loudness on a linear scale (e.g., doubling in sones means doubling in perceived loudness) and phons representing equal loudness contours across different frequencies. Additionally, binaural loudness is considered—sounds perceived with both ears are often louder than those heard with just one ear.
+Loudness is influenced by multiple factors, including frequency, duration, and the phase relationships of sounds. Higher frequencies are often perceived as louder at the same sound pressure level (SPL) compared to lower frequencies, and longer sounds tend to be perceived as louder due to temporal integration. The model uses units such as sone and phon to quantify loudness, with 
+*   sones representing perceived loudness on a linear scale (e.g., doubling in sones means doubling in perceived loudness) and 
+*   phons representing equal loudness contours across different frequencies. 
+
+Additionally, binaural loudness is considered—sounds perceived with both ears are often louder than those heard with just one ear.
+
+
+### Why Use This Model?
+
+* **Understand Sound Perception:** This model helps you understand how changes in sound characteristics affect perceived loudness.
+
+* **Research & Analysis:** Useful for academic research in auditory perception and psychoacoustics.
+
+* **Practical Applications:** From product testing in audio hardware to studying environmental noise levels.
 
 #### Time Constants in the TVL2018 Model
 According to Moore et al. (2018), the model includes "three stages with different degrees of temporal smoothing, corresponding to instantaneous, short-term, and long-term loudness." The paper states "Short-term loudness is meant to represent the loudness of a short segment of sound, such as a word or a single musical note, whereas long-term loudness is meant to represent the overall loudness of a longer segment of sound, such as a sentence or a musical phrase."
 
-Attack time (Ta/Tal) = how quickly the system responds to increases in level
-Release time (Tr/Trl) = how quickly it responds to decreases in level
+*    Attack time (Ta/Tal) = how quickly the system responds to increases in level
+*    Release time (Tr/Trl) = how quickly it responds to decreases in level
 
 #### Original Constants
 
@@ -61,14 +76,6 @@ Short-term: Ta = 22 ms (aa = 0.045), Tr = 30 ms (ar = 0.033)
 Long-term: Tal = 99 ms (aal = 0.01), Trl = 751 ms (arl = 0.00133)
 
 The paper doesn't provide explicit scientific justification for using two specific time constants. The closest it comes is describing their functional purposes - short-term for individual words/notes and long-term for sentences/phrases. The time constants appear to be empirically determined rather than derived from fundamental auditory principles. Moore et al. (2018) focused on refining these values through experimental data fitting rather than explaining their theoretical basis.
-
-### Why Use This Model?
-
-* **Understand Sound Perception:** This model helps you understand how changes in sound characteristics affect perceived loudness.
-
-* **Research & Analysis:** Useful for academic research in auditory perception and psychoacoustics.
-
-* **Practical Applications:** From product testing in audio hardware to studying environmental noise levels.
 
 ## II. GETTING STARTED
 
