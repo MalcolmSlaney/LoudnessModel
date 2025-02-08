@@ -2,10 +2,12 @@ import os
 
 import jax
 import jax.numpy as jnp
+from jax.scipy.signal import convolve
+
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.io import wavfile
-from scipy.signal import convolve, resample
+from scipy.signal import resample
 from scipy.interpolate import PchipInterpolator, interp1d
 from typing import List, Optional, Tuple, Union
 
@@ -961,11 +963,11 @@ def monaural_specific_loudness_to_binaural_loudness_025(
 
     # Smooth the left and right specific loudness
     specific_loudness_left_smoothed =\
-        jnp.convolve(W, specific_loudness_left_mon, mode='full') / jnp.sum(W)
+        convolve(W, specific_loudness_left_mon, mode='full') / jnp.sum(W)
     specific_loudness_left_smoothed = specific_loudness_left_smoothed[72:222]
 
     specific_loudness_right_smoothed =\
-        jnp.convolve(W, specific_loudness_right_mon, mode='full') / jnp.sum(W)
+        convolve(W, specific_loudness_right_mon, mode='full') / jnp.sum(W)
     specific_loudness_right_smoothed = specific_loudness_right_smoothed[72:222]
 
     # Add small value to avoid division by zero
