@@ -7,6 +7,7 @@ from absl.testing import absltest
 
 from jax import random, lax
 
+import transfer_functions 
 import tvl2018_jax as tvl
 
 # This line is only necessary to match the test's precision
@@ -20,22 +21,18 @@ class LoudnessModelTests(absltest.TestCase):
         # Ensure results directory exists
         os.makedirs('results', exist_ok=True)
 
-        debug_plot_filename = os.path.join(
-            'results', 'synthesize_1khz_100ms_50dB_loudness_plot.png')
-        debug_summary_filename = os.path.join(
-            'results', 'synthesize_1khz_100ms_50dB_calibration_level_TVL_2018.txt')
+        frequency = 1000  # Hz
+        duration = 0.1    # seconds
+        rate = 32000      # Hz
+        sound = tvl.synthesize_sound(frequency, duration, rate)
 
         # Here, you can modify the input values into tvl.main_tv2018
         db_max = 50  # Example SPL value
-        filename_or_sound = 'synthesize_1khz_100ms'
-        filter_filename = 'transfer functions/ff_32000.mat'
         _, short_term_loudness, long_term_loudness = tvl.main_tv2018(
-            filename_or_sound,
+            sound,
             db_max,
-            filter_filename,
-            debug_plot=True,
-            debug_plot_filename=debug_plot_filename,
-            debug_summary_filename=debug_summary_filename
+            transfer_functions.ff_32000,
+            rate=rate,
         )
 
         # Plotting the short-term and long-term loudness for visualization
@@ -66,15 +63,15 @@ class LoudnessModelTests(absltest.TestCase):
         cls.duration = 0.1
         cls.sample_rate = 32000  # Hz
         cls.db_max = 50  # Example SPL value
-        cls.filename_or_sound = 'synthesize_1khz_100ms'
-        cls.filter_filename = 'transfer functions/ff_32000.mat'
+        cls.sound = tvl.synthesize_sound(cls.frequency, cls.duration, 
+                                         cls.sample_rate)
+        cls.filter = transfer_functions.ff_32000
 
         cls.loudness, cls.short_term_loudness, cls.long_term_loudness = tvl.main_tv2018(
-            cls.filename_or_sound,
+            cls.sound,
             cls.db_max,
-            cls.filter_filename,
-            debug_plot=False,  # Disable plotting during tests
-            debug_summary_filename=None  # Disable summary file
+            cls.filter,
+            cls.sample_rate,
         )
         # Generate Hann windows for testing
         cls.npts = int(cls.sample_rate / 1000 * 64)  # 2048
@@ -150,14 +147,14 @@ class LoudnessModelTests(absltest.TestCase):
         n_harmonics = 10
         peak_constraint = 0.8
         db_max = 50
-        filter_filename = 'transfer functions/ff_32000.mat'
+        filter = transfer_functions.ff_32000
 
         def process_signal(mono_signal):
             """Process mono signal: normalize, make stereo, calculate metrics."""
             signal = mono_signal * (peak_constraint / jnp.max(jnp.abs(mono_signal)))
             stereo = jnp.column_stack((signal, signal))
             rms = jnp.sqrt(jnp.mean(signal ** 2))
-            loudness, _, _ = tvl.main_tv2018(stereo, db_max, filter_filename, rate=rate)
+            loudness, _, _ = tvl.main_tv2018(stereo, db_max, filter, rate=rate)
             return rms, loudness
 
         def create_signal(magnitudes, phases):
@@ -234,20 +231,6 @@ class LoudnessModelTests(absltest.TestCase):
 
         loudness = self.loudness
 
-        # Uncomment this code for debug files and plot if needed
-        # debug_plot_filename = os.path.join(
-        #     'results', 'test_overall_loudness_plot.png')
-        # debug_summary_filename = os.path.join(
-        #     'results', 'test_overall_loudness_summary.txt')
-        # loudness, _, _ = tvl.main_tv2018(
-        #     self.filename_or_sound,
-        #     self.db_max,
-        #     self.filter_filename,
-        #     debug_plot=True,
-        #     debug_plot_filename=debug_plot_filename,
-        #     debug_summary_filename=debug_summary_filename
-        # )
-
         # Assert maximum loudness
         self.assertAlmostEqual(
             loudness,
@@ -261,20 +244,6 @@ class LoudnessModelTests(absltest.TestCase):
         # Ensure results directory exists
         os.makedirs('results', exist_ok=True)
         short_term_loudness = self.short_term_loudness
-
-        # Uncomment this code for debug files and plot if needed
-        # debug_plot_filename = os.path.join(
-        #     'results', 'test_short_term_loudness_plot.png')
-        # debug_summary_filename = os.path.join(
-        #     'results', 'test_short_term_loudness_summary.txt')
-        # loudness, short_term_loudness, long_term_loudness = tvl.main_tv2018(
-        #     self.filename_or_sound,
-        #     self.db_max,
-        #     self.filter_filename,
-        #     debug_plot=True,
-        #     debug_plot_filename=debug_plot_filename,
-        #     debug_summary_filename=debug_summary_filename
-        # )
 
         # Assert first five short-term loudness values
         np.testing.assert_allclose(
@@ -292,21 +261,6 @@ class LoudnessModelTests(absltest.TestCase):
         # Call main_tv2018
         long_term_loudness = self.long_term_loudness
 
-        #  Uncomment this code for debug files and plot if needed
-        # debug_plot_filename = os.path.join(
-        #     'results', 'test_long_term_loudness_plot.png')
-        # debug_summary_filename = os.path.join(
-        #     'results', 'test_long_term_loudness_summary.txt')
-        # _, _, long_term_loudness = tvl.main_tv2018(
-        #     self.filename_or_sound,
-        #     self.db_max,
-        #     self.filter_filename,
-        #     debug_plot=True,
-        #     debug_plot_filename=debug_plot_filename,
-        #     debug_summary_filename=debug_summary_filename
-        # )
-        
-
         # Assert first five long-term loudness values
         np.testing.assert_allclose(
             long_term_loudness[:5],
@@ -318,10 +272,10 @@ class LoudnessModelTests(absltest.TestCase):
     def test_signal_segment_to_spectrum(self):
         """Test the signal segment to spectrum conversion against expected values."""
         # Use the filtered signal from test_basic_example
-        filter_filename = self.filter_filename
         # Synthesize and filter the sound
-        sound = tvl.synthesize_sound(self.frequency, self.duration, rate=self.sample_rate)
-        cochlea_filtered = tvl.sound_field_to_cochlea(sound, filter_filename)
+        sound = tvl.synthesize_sound(self.frequency, self.duration, 
+                                     rate=self.sample_rate)
+        cochlea_filtered = tvl.sound_field_to_cochlea(sound, self.filter)
         # Process the first segment
         segment = cochlea_filtered[:2048, :]  # First segment
         f_left_relevant, l_left_relevant, f_right_relevant, l_right_relevant = tvl.signal_segment_to_spectrum(
@@ -462,13 +416,13 @@ class LoudnessModelTests(absltest.TestCase):
         duration = self.duration  # seconds
         rate = self.sample_rate
         db_max = self.db_max
-        filter_filename = self.filter_filename
+        filter = self.filter
 
         # Synthesize sound
         sound = tvl.synthesize_sound(frequency, duration, rate)
 
         # Filter sound
-        cochlea_filtered = tvl.sound_field_to_cochlea(sound, filter_filename)
+        cochlea_filtered = tvl.sound_field_to_cochlea(sound, filter)
 
         # Call the function under test
         ist_loudness_left, ist_loudness_right =\
