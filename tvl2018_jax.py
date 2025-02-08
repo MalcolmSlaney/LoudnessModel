@@ -1013,9 +1013,10 @@ def filtered_signal_to_monaural_instantaneous_specific_loudness(
     """
     npts = int(rate / 1000 * 64)  # points for FFT, 2048
     n_segment_duration = 1  # duration of segment in ms
-    n_samples_per_segment = int(rate / 1000 * n_segment_duration)  # 32
-    n_segments_in_signal = int(
-        jnp.floor((len(signal) - npts) / rate * 1000 / n_segment_duration))
+    n_samples_per_segment = jnp.floor(rate / 1000 * n_segment_duration).astype(int)  # 32
+    n_segments_in_signal = jnp.floor((len(signal) - npts) / 
+                                     rate * 1000 / 
+                                     n_segment_duration).astype(int)
         
     # Hann windows for 6 FFTs; 1st column 64 ms, 6th column 2 ms
     w_hann = []
