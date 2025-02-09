@@ -1037,6 +1037,7 @@ def filtered_signal_to_monaural_instantaneous_specific_loudness(
     instantaneous_specific_loudness_left = []
     instantaneous_specific_loudness_right = []
 
+    # Replace with https://github.com/jax-ml/jax/issues/3171
     for i_segment in range(n_segments_in_signal + 1):
         """
         # Display progress every 50 segments
