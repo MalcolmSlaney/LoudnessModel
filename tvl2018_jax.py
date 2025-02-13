@@ -1167,9 +1167,6 @@ def main_tv2018(sound: Union[np.ndarray, jnp.ndarray],
 
         filter_filename: The filename of the FIR filter.
         rate: Sampling frequency. If not provided, it will be determined from the file.
-        debug_plot: Whether to show a summary plot
-        debug_plot_filename: If plotting, where to store the summary plot.
-        debug_summary_filename: If non-null, where to put the text summary
 
     Returns:
         Calculated loudness metrics: short-term, long-term, highest loudness value
