@@ -2,10 +2,12 @@ import os
 
 import jax
 import jax.numpy as jnp
+from jax.scipy.signal import convolve
+
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.io import loadmat, wavfile
-from scipy.signal import convolve, resample
+from scipy.io import wavfile
+from scipy.signal import resample
 from scipy.interpolate import PchipInterpolator, interp1d
 from typing import List, Optional, Tuple, Union
 
@@ -961,11 +963,11 @@ def monaural_specific_loudness_to_binaural_loudness_025(
 
     # Smooth the left and right specific loudness
     specific_loudness_left_smoothed =\
-        jnp.convolve(W, specific_loudness_left_mon, mode='full') / jnp.sum(W)
+        convolve(W, specific_loudness_left_mon, mode='full') / jnp.sum(W)
     specific_loudness_left_smoothed = specific_loudness_left_smoothed[72:222]
 
     specific_loudness_right_smoothed =\
-        jnp.convolve(W, specific_loudness_right_mon, mode='full') / jnp.sum(W)
+        convolve(W, specific_loudness_right_mon, mode='full') / jnp.sum(W)
     specific_loudness_right_smoothed = specific_loudness_right_smoothed[72:222]
 
     # Add small value to avoid division by zero
@@ -1011,9 +1013,10 @@ def filtered_signal_to_monaural_instantaneous_specific_loudness(
     """
     npts = int(rate / 1000 * 64)  # points for FFT, 2048
     n_segment_duration = 1  # duration of segment in ms
-    n_samples_per_segment = int(rate / 1000 * n_segment_duration)  # 32
-    n_segments_in_signal = int(
-        jnp.floor((len(signal) - npts) / rate * 1000 / n_segment_duration))
+    n_samples_per_segment = jnp.floor(rate / 1000 * n_segment_duration).astype(int)  # 32
+    n_segments_in_signal = jnp.floor((len(signal) - npts) / 
+                                     rate * 1000 / 
+                                     n_segment_duration).astype(int)
         
     # Hann windows for 6 FFTs; 1st column 64 ms, 6th column 2 ms
     w_hann = []
@@ -1034,6 +1037,7 @@ def filtered_signal_to_monaural_instantaneous_specific_loudness(
     instantaneous_specific_loudness_left = []
     instantaneous_specific_loudness_right = []
 
+    # Replace with https://github.com/jax-ml/jax/issues/3171
     for i_segment in range(n_segments_in_signal + 1):
         """
         # Display progress every 50 segments
@@ -1095,29 +1099,23 @@ def shortterm_loudness_to_longterm_loudness(Nst: jnp.ndarray) -> jnp.ndarray:
     return Nlt
 
 
-def sound_field_to_cochlea(s: jnp.ndarray, filter_filename: str) -> jnp.ndarray:
+def sound_field_to_cochlea(s: jnp.ndarray, filter: jnp.ndarray) -> jnp.ndarray:
     """
     Applies a filter to the sound field data to simulate cochlear processing.
 
     Args:
        s: The input sound field data, a 2D array with two columns for stereo signals.
-       filter_filename: The filename of the filter coefficients (MAT-file).
+       filter: Filter coefficients, 1-d array.
 
     Returns:
        out: The filtered output signal.
     """
-
-    # Load the filter coefficients from the MAT file
-    filter_data = loadmat(f'{filter_filename}')
-    # Assuming vecCoefficients is a 1D array
-    vec_coefficients = filter_data['vecCoefficients'].flatten()
-
     # Apply the filter to the left channel
-    out_left = convolve(s[:, 0], vec_coefficients, mode='full')
+    out_left = convolve(s[:, 0], filter, mode='full')
 
     # Check if there's a right channel and apply the filter
     if s.shape[1] > 1:
-        out_right = convolve(s[:, 1], vec_coefficients, mode='full')
+        out_right = convolve(s[:, 1], filter, mode='full')
     else:
         out_right = out_left
 
@@ -1154,13 +1152,10 @@ def synthesize_sound(frequency: float, duration: float, rate: int) -> jnp.ndarra
     return stereo_sound
 
 
-def main_tv2018(filename_or_sound: Union[str, jnp.ndarray],
+def main_tv2018(sound: Union[np.ndarray, jnp.ndarray],
                 db_max: float,
-                filter_filename: str,
-                rate: int = None,
-                debug_plot: bool = False,
-                debug_plot_filename: Optional[str] = None,
-                debug_summary_filename: Optional[str] = None):
+                filter: Union[np.ndarray, jnp.ndarray],
+                rate) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculate loudness according to Moore, Glasberg & Schlittenlacher (2016).
 
@@ -1172,40 +1167,12 @@ def main_tv2018(filename_or_sound: Union[str, jnp.ndarray],
 
         filter_filename: The filename of the FIR filter.
         rate: Sampling frequency. If not provided, it will be determined from the file.
-        debug_plot: Whether to show a summary plot
-        debug_plot_filename: If plotting, where to store the summary plot.
-        debug_summary_filename: If non-null, where to put the text summary
 
     Returns:
         Calculated loudness metrics: short-term, long-term, highest loudness value
     """
-    if isinstance(filename_or_sound, str):
-        if filename_or_sound.startswith("synthesize_"):
-            try:
-                parts = filename_or_sound.split("_")
-                frequency = int(parts[1].replace("khz", "")) * 1000
-                duration = float(parts[2].replace("ms", "")) / 1000
-                if not rate:
-                    rate = 32000  # Default rate if not provided
-                data = synthesize_sound(frequency, duration, rate=rate)
-            except ValueError:
-                raise ValueError("Invalid argument: filename_or_sound must be a string, "
-                                 "numpy array, or one of the provided synthesized "
-                                 "sounds (e.g., 'synthesize_{}khz_{}ms').")
-        else:
-            # Assume it's a path to audio file and not a request for synthesized sound
-            if not os.path.exists(filename_or_sound):
-                raise FileNotFoundError("No file found. filename_or_sound must be a string, "
-                                        "numpy array, or one of the provided synthesized sounds "
-                                        "(e.g., 'synthesize_{}khz_{}ms').")
-            data, rate = read_and_resample(filename_or_sound)
-    elif isinstance(filename_or_sound, jnp.ndarray):
-        if not rate:
-            raise ValueError("Rate must be specified when providing sound data directly.")
-        data = filename_or_sound
-
     # Filter the sound field to cochlea
-    data = sound_field_to_cochlea(data, filter_filename)
+    data = sound_field_to_cochlea(sound, filter)
 
     # Calculate instantaneous specific loudness
     instantaneous_specific_loudness_left, instantaneous_specific_loudness_right = \
@@ -1246,56 +1213,5 @@ def main_tv2018(filename_or_sound: Union[str, jnp.ndarray],
 
     short_term_loudness_np = np.asarray(short_term_loudness)
     long_term_loudness_np = np.asarray(long_term_loudness)
-    # Plotting the results
-    if debug_plot:
-        plt.figure()
-        plt.plot(range(len(short_term_loudness_np)), short_term_loudness_np,
-                 'b-', label='Short-term loudness')
-        plt.plot(range(len(long_term_loudness_np)), long_term_loudness_np,
-                 'r-', label='Long-term loudness')
-        plt.xlabel('time [ms]')
-        plt.ylabel('Loudness [sone]')
-        plt.title(f'Loudness Analysis: {filename_or_sound}\nReference Level: {db_max} dB SPL')
-        plt.legend()
-        plt.grid(True)
-        plt.show
-        # save plot to results folder
-        if debug_plot_filename:
-            plt.savefig(debug_plot_filename)
-            print(f"\nPlot saved to: {debug_plot_filename}")
-
-    # Writing results to text file
-    if debug_summary_filename:
-        with open(debug_summary_filename, 'w') as fid:
-            fid.write(f"{debug_summary_filename}\n\n")
-            fid.write(f"Calibration level:      {db_max} "
-                      f"dB SPL (RMS level of a full-scale sinusoid)\n")
-            fid.write(f"Filename of FIR filter: {filter_filename}\n\n")
-            fid.write(f"Maximum of long-term loudness:  "
-                      f"{jnp.max(long_term_loudness):9.2f} sone\n")
-            fid.write(f"                                "
-                      f"{jnp.max(sone_to_phon_tv2015(long_term_loudness)):9.2f} phon\n")
-            fid.write(f"Maximum of short-term loudness: "
-                      f"{jnp.max(short_term_loudness):9.2f} sone\n")
-            fid.write(f"                                "
-                      f"{jnp.max(sone_to_phon_tv2015(short_term_loudness)):9.2f} phon\n\n")
-            fid.write("Loudness over time\n")
-            fid.write("1st column: time in milliseconds\n")
-            fid.write("2nd column: short-term loudness in sone\n")
-            fid.write("3rd column: short-term loudness level in phon\n")
-            fid.write("4th column: long-term loudness in sone\n")
-            fid.write("5th column: long-term loudness level in phon\n\n")
-            fid.write("   time   short-t. loudness    long-t. loudness\n")
-            fid.write("     ms      sone      phon      sone      phon\n")
-            for i in range(len(long_term_loudness)):
-                fid.write(f"{i:7.0f} {short_term_loudness[i]:9.2f} "
-                          f"{sone_to_phon_tv2015(short_term_loudness[i]):9.1f} "
-                          f"{long_term_loudness[i]:9.2f} "
-                          f"{sone_to_phon_tv2015(long_term_loudness[i]):9.1f}\n")
-            fid.write(f"max     {jnp.max(short_term_loudness):9.2f} "
-                      f"{jnp.max(sone_to_phon_tv2015(short_term_loudness)):9.1f} "
-                      f"{jnp.max(long_term_loudness):9.2f} "
-                      f"{jnp.max(sone_to_phon_tv2015(long_term_loudness)):9.1f}\n")
-        print(f"Summary saved to: {debug_summary_filename}")
 
     return loudness, short_term_loudness, long_term_loudness
