@@ -2,6 +2,36 @@ import numpy as np
 
 # Created from LoudnessModel/transfer_functions/df_32000.mat
 
+"""
+The ISO532-2 paper has this to say about the three transfer functions included 
+here:
+
+7.2.2 Free field and diffuse field transfer functions for sound picked up by a 
+single microphone
+
+These transfer functions are applicable when the sound is picked up via a 
+microphone placed at the centre of the position where the listener’s head would 
+be. The acoustical effects of the head/torso and outer ear on transmission of 
+sound to the tympanic membrane are represented by two standard transfer 
+functions. 
+
+The first, applicable to free field (ff) listening with frontal incidence of the
+sound source, is specified in column 2 of Table 1. The second, applicable to 
+listening in a diffuse field, is specified in column 3 of Table 1. The transfer 
+functions represent the mean for adult humans[19-21].
+
+The diffuse field (df) transfer function can also be used for sounds presented 
+via earphones that are designed to have a diffuse field response (see 7.2.3).
+
+The transfer functions given in Table 1 are based on data known to provide good 
+predictions of the equal loudness contours given in ISO 226:2003 and the 
+absolute threshold values given in ISO 389-7:2005. 
+
+It is acknowledged that these transfer functions do not comply with those 
+specified in ISO 11904-1:2002.
+"""
+
+# Diffuse field transfer function
 df_32000 = np.array([
     -7.069425009097e-08, -7.661967296338335e-08, -1.2150709734916362e-07, -1.5063417005883637e-07, 
     -1.9763016613310114e-07, -1.763844500583537e-07, -1.2923569438497325e-07, -8.90234645709483e-08, 
@@ -1031,6 +1061,7 @@ df_32000 = np.array([
 
 # Created from LoudnessModel/transfer_functions/ed_32000.mat
 
+# ??? field transfer function
 ed_32000 = np.array([
     -3.2505878004054887e-08, -3.287291791016491e-08, -3.8671111178845556e-08, -3.38288794349589e-08, 
     -5.245768177408164e-08, -4.40615908419177e-08, -3.981347632028548e-08, -5.037654786235391e-08, 
@@ -2060,6 +2091,7 @@ ed_32000 = np.array([
 
 # Created from LoudnessModel/transfer_functions/ff_32000.mat
 
+# Free field transfer function
 ff_32000 = np.array([
     -5.04766985258582e-08, -3.525824510105253e-08, -7.06863571190477e-08, -1.4092556352233041e-07, 
     -2.0307755949638863e-07, -1.542185914825013e-07, -1.0063051424558865e-07, -2.4752496514646364e-08, 
