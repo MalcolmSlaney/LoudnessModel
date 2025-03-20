@@ -1,8 +1,9 @@
 import os
-
-import matplotlib.pyplot as plt
 import numpy as np
-from scipy.io import loadmat, wavfile
+
+from multiprocessing import Pool
+from functools import partial
+from scipy.io import wavfile
 from scipy.signal import convolve, resample
 from scipy.interpolate import PchipInterpolator, interp1d
 from typing import List, Optional, Tuple, Union
@@ -596,8 +597,7 @@ def excitation_threshold_tvl(f: Union[List[float], np.ndarray]) -> np.ndarray:
 
 
 def excitation_to_specific_loudness_binaural_025(
-                          excitation_levels: Union[List[float], np.ndarray],
-                          plot_flag: bool = False) -> np.ndarray:
+                          excitation_levels: Union[List[float], np.ndarray]) -> np.ndarray:
     """
     Calculate specific loudness from excitation patterns at 0.25-ERB steps,
     accounting for binaural loudness.
@@ -632,17 +632,7 @@ def excitation_to_specific_loudness_binaural_025(
     # Combine results based on conditions
     out = np.where(excitation > threshold, np.where(
         excitation < 1e10, n_1, n_3), n_2)
-    # Original MATLAB code includes a commented out plot, recreated here:
-    if plot_flag:
-        plt.figure()
-        plt.semilogy(excitation_levels, out, label='Specific Loudness')
-        plt.xlim([0, 110])
-        plt.ylim([0.005, 10])
-        plt.xlabel('Excitation Levels')
-        plt.ylabel('Specific Loudness (Sones)')
-        plt.title('Excitation vs. Specific Loudness')
-        plt.grid(True, which="both", ls="--")
-        plt.show()
+   
     return out
 
 
@@ -980,6 +970,32 @@ def monaural_specific_loudness_to_binaural_loudness_025(
     return loudness, loudness_left, loudness_right
 
 
+def process_segment(segment, rate, db_max, w_hann, v_limiting_indices):
+    """Process a single segment - to be used with multiprocessing."""
+    # Calculate relevant frequencies and levels
+    f_left_relevant, l_left_relevant, f_right_relevant, l_right_relevant = \
+        signal_segment_to_spectrum(segment, rate, db_max, w_hann, v_limiting_indices)
+
+    # Process left channel
+    if l_left_relevant.size == 0:
+        specific_loudness_left = np.zeros(150)
+    else:
+        excitation_levels_left = \
+            spectrum_to_excitation_pattern_025(f_left_relevant, l_left_relevant)
+        specific_loudness_left = \
+            excitation_to_specific_loudness_binaural_025(excitation_levels_left)
+
+    # Process right channel
+    if l_right_relevant.size == 0:
+        specific_loudness_right = np.zeros(150)
+    else:
+        excitation_levels_right = \
+            spectrum_to_excitation_pattern_025(f_right_relevant, l_right_relevant)
+        specific_loudness_right = \
+            excitation_to_specific_loudness_binaural_025(excitation_levels_right)
+
+    return specific_loudness_left, specific_loudness_right
+
 def filtered_signal_to_monaural_instantaneous_specific_loudness(
                   signal: np.ndarray, rate: int, db_max: float
                   ) -> Tuple[np.ndarray, np.ndarray]:
@@ -1001,18 +1017,20 @@ def filtered_signal_to_monaural_instantaneous_specific_loudness(
     n_samples_per_segment = int(rate / 1000 * n_segment_duration)  # 32
     n_segments_in_signal = int(
         np.floor((len(signal) - npts) / rate * 1000 / n_segment_duration))
+
     # Hann windows for 6 FFTs; 1st column 64 ms, 6th column 2 ms
     w_hann = np.zeros((npts, 6))
     for i in range(6):
         half_window_size = npts // (2 ** i)
         pad_size = (int((1 - 1 / 2**(i)) / 2 * npts))
-        w_hann[:, i] = np.concatenate([
-            np.zeros(pad_size),
-            np.hanning(half_window_size),
-            np.zeros(pad_size)
-        ])
+        if half_window_size > 0:
+            w_hann[:, i] = np.concatenate([
+                np.zeros(pad_size),
+                np.hanning(half_window_size),
+                np.zeros(npts - pad_size - half_window_size)
+            ])
 
-    # Indices which shall be used from the FFTs, 20-80 Hz from the first...
+    # Limiting frequencies and indices
     v_limiting_f = [20, 80, 500, 1250, 2540, 4050, 15000]
     v_limiting_indices = [int(f / (rate / npts)) + 1 for f in v_limiting_f]
 
@@ -1024,41 +1042,28 @@ def filtered_signal_to_monaural_instantaneous_specific_loudness(
     instantaneous_specific_loudness_right = np.zeros(
         (n_segments_in_signal + 1, loudness_length))
 
+    # Prepare segments
+    segments = []
     for i_segment in range(n_segments_in_signal + 1):
-        """
-        # Display progress every 50 segments
-        if iSegment % 50 == 0:
-            print(f"{iSegment} ms of {nSegmentsInSignal} ms analyzed")
-        """
-
         segment_start = i_segment * n_samples_per_segment
         segment_end = segment_start + npts
-        segment = signal[segment_start:segment_end, :]
+        segments.append(signal[segment_start:segment_end])
 
-        # Calculate relevant frequencies and levels
-        f_left_relevant, l_left_relevant, f_right_relevant, l_right_relevant = \
-            signal_segment_to_spectrum(segment, rate, db_max, w_hann, v_limiting_indices)
+    # Process segments in parallel
+    process_func = partial(process_segment, 
+                         rate=rate, 
+                         db_max=db_max, 
+                         w_hann=w_hann, 
+                         v_limiting_indices=v_limiting_indices)
 
-        # If left has no relevant spectral components
-        if l_left_relevant.size == 0:
-            specific_loudness_left = np.zeros(150)
-        else:
-            excitation_levels_left = \
-                spectrum_to_excitation_pattern_025(f_left_relevant, l_left_relevant)
-            specific_loudness_left = \
-                excitation_to_specific_loudness_binaural_025(excitation_levels_left)
+    # Use number of CPU cores for parallel processing
+    with Pool() as pool:
+        results = pool.map(process_func, segments)
 
-        # If right has no relevant spectral components
-        if l_right_relevant.size == 0:
-            specific_loudness_right = np.zeros(150)
-        else:
-            excitation_levels_right = \
-                spectrum_to_excitation_pattern_025(f_right_relevant, l_right_relevant)
-            specific_loudness_right = \
-                excitation_to_specific_loudness_binaural_025(excitation_levels_right)
-
-        instantaneous_specific_loudness_left[i_segment, :] = specific_loudness_left
-        instantaneous_specific_loudness_right[i_segment, :] = specific_loudness_right
+    # Store results
+    for i, (left, right) in enumerate(results):
+        instantaneous_specific_loudness_left[i] = left
+        instantaneous_specific_loudness_right[i] = right
 
     return instantaneous_specific_loudness_left, instantaneous_specific_loudness_right
 
@@ -1086,35 +1091,30 @@ def shortterm_loudness_to_longterm_loudness(Nst: np.ndarray) -> np.ndarray:
     return Nlt
 
 
-def sound_field_to_cochlea(s: np.ndarray, filter_filename: str) -> np.ndarray:
+def sound_field_to_cochlea(s: np.ndarray, filter: np.ndarray) -> np.ndarray:
     """
     Applies a filter to the sound field data to simulate cochlear processing.
 
     Args:
        s: The input sound field data, a 2D array with two columns for stereo signals.
-       filter_filename: The filename of the filter coefficients (MAT-file).
+       filter: Filter coefficients, 1-d array.
 
     Returns:
        out: The filtered output signal.
     """
 
-    # Load the filter coefficients from the MAT file
-    filter_data = loadmat(f'{filter_filename}')
-    # Assuming vecCoefficients is a 1D array
-    vec_coefficients = filter_data['vecCoefficients'].flatten()
-
     # Apply the filter to the left channel
-    out_left = convolve(s[:, 0], vec_coefficients, mode='full')
+    out_left = convolve(s[:, 0], filter, mode='full')
 
     # Check if there's a right channel and apply the filter
     if s.shape[1] > 1:
-        out_right = convolve(s[:, 1], vec_coefficients, mode='full')
+        out_right = convolve(s[:, 1], filter, mode='full')
     else:
         out_right = out_left
 
     # Use vstack to maintain stereo format
     out = np.vstack((out_left[1024:-1024], out_right[1024:-1024])).T
-    # Without filter, included in original code:
+    # Without filter, included in original MATLAB code:
     # out = np.vstack((np.zeros((1024, 2)), s, np.zeros((1024, 2))))
     return out
 
@@ -1145,58 +1145,28 @@ def synthesize_sound(frequency: float, duration: float, rate: int) -> np.ndarray
     return stereo_sound
 
 
-def main_tv2018(filename_or_sound: Union[str, np.ndarray],
+def compute_loudness(sound: Union[np.ndarray, np.ndarray],
                 db_max: float,
-                filter_filename: str,
-                rate: int = None,
-                debug_plot: bool = False,
-                debug_plot_filename: Optional[str] = None,
-                debug_summary_filename: Optional[str] = None):
+                filter: Union[np.ndarray, np.ndarray],
+                rate) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculate loudness according to Moore, Glasberg & Schlittenlacher (2016).
 
     Args:
-        filename_or_sound: The path to filename of the sound file, the audio data
-                itself, or synthesized sound frequency (ex. synthesize_1000khz100ms)
+        sound: Input sound data as a 2D-array
         db_max: The root-mean-square sound pressure level of a full-scale sinusoid,
                 i.e. a sinusoid whose peak amplitude is 1 in Matlab.
 
-        filter_filename: The filename of the FIR filter.
-        rate: Sampling frequency. If not provided, it will be determined from the file.
-        debug_plot: Whether to show a summary plot
-        debug_plot_filename: If plotting, where to store the summary plot.
-        debug_summary_filename: If non-null, where to put the text summary
+        filter: Filter coefficients array for the transfer function representing
+               free-field (ff), diffuse-field (df), or eardrum (ed) response
+        rate: Sampling frequency. Recommended 32000. 
+       
 
     Returns:
         Calculated loudness metrics: short-term, long-term, highest loudness value
     """
-    if isinstance(filename_or_sound, str):
-        if filename_or_sound.startswith("synthesize_"):
-            try:
-                parts = filename_or_sound.split("_")
-                frequency = int(parts[1].replace("khz", "")) * 1000
-                duration = float(parts[2].replace("ms", "")) / 1000
-                if not rate:
-                    rate = 32000  # Default rate if not provided
-                data = synthesize_sound(frequency, duration, rate=rate)
-            except ValueError:
-                raise ValueError("Invalid argument: filename_or_sound must be a string, "
-                                 "numpy array, or one of the provided synthesized "
-                                 "sounds (e.g., 'synthesize_{}khz_{}ms').")
-        else:
-            # Assume it's a path to audio file and not a request for synthesized sound
-            if not os.path.exists(filename_or_sound):
-                raise FileNotFoundError("No file found. filename_or_sound must be a string, "
-                                        "numpy array, or one of the provided synthesized sounds "
-                                        "(e.g., 'synthesize_{}khz_{}ms').")
-            data, rate = read_and_resample(filename_or_sound)
-    elif isinstance(filename_or_sound, np.ndarray):
-        if not rate:
-            raise ValueError("Rate must be specified when providing sound data directly.")
-        data = filename_or_sound
-
     # Filter the sound field to cochlea
-    data = sound_field_to_cochlea(data, filter_filename)
+    data = sound_field_to_cochlea(sound, filter)
 
     # Calculate instantaneous specific loudness
     instantaneous_specific_loudness_left, instantaneous_specific_loudness_right = \
@@ -1229,59 +1199,5 @@ def main_tv2018(filename_or_sound: Union[str, np.ndarray],
 
     short_term_loudness = \
         short_term_loudness_left.flatten() + short_term_loudness_right.flatten()
-
-    # Plotting the results
-    if debug_plot:
-        plt.figure()
-        plt.plot(range(len(short_term_loudness)), short_term_loudness,
-                 'b-', label='Short-term loudness')
-        plt.plot(range(len(long_term_loudness)), long_term_loudness,
-                 'r-', label='Long-term loudness')
-        plt.xlabel('Time (ms)')
-        plt.ylabel('Loudness (sone)')
-        plt.title(f'Loudness Analysis: {filename_or_sound}\nReference Level: {db_max} dB SPL')
-        plt.legend()
-        plt.grid(True)
-        plt.show
-        # save plot to results folder
-        if debug_plot_filename:
-            plt.savefig(debug_plot_filename)
-            print(f"\nPlot saved to: {debug_plot_filename}")
-
-
-    # Writing results to text file
-    if debug_summary_filename:
-        with open(debug_summary_filename, 'w') as fid:
-            fid.write(f"{debug_summary_filename}\n\n")
-            fid.write(f"Calibration level:      {db_max} "
-                      f"dB SPL (RMS level of a full-scale sinusoid)\n")
-            fid.write(f"Filename of FIR filter: {filter_filename}\n\n")
-            fid.write(f"Maximum of long-term loudness:  "
-                      f"{np.max(long_term_loudness):9.2f} sone\n")
-            fid.write(f"                                "
-                      f"{np.max(sone_to_phon_tv2015(long_term_loudness)):9.2f} phon\n")
-            fid.write(f"Maximum of short-term loudness: "
-                      f"{np.max(short_term_loudness):9.2f} sone\n")
-            fid.write(f"                                "
-                      f"{np.max(sone_to_phon_tv2015(short_term_loudness)):9.2f} phon\n\n")
-            fid.write("Loudness over time\n")
-            fid.write("1st column: time in milliseconds\n")
-            fid.write("2nd column: short-term loudness in sone\n")
-            fid.write("3rd column: short-term loudness level in phon\n")
-            fid.write("4th column: long-term loudness in sone\n")
-            fid.write("5th column: long-term loudness level in phon\n\n")
-            fid.write("   time   short-t. loudness    long-t. loudness\n")
-            fid.write("     ms      sone      phon      sone      phon\n")
-            for i in range(len(long_term_loudness)):
-                fid.write(f"{i:7.0f} {short_term_loudness[i]:9.2f} "
-                          f"{sone_to_phon_tv2015(short_term_loudness[i]):9.1f} "
-                          f"{long_term_loudness[i]:9.2f} "
-                          f"{sone_to_phon_tv2015(long_term_loudness[i]):9.1f}\n")
-            fid.write(f"max     {np.max(short_term_loudness):9.2f} "
-                      f"{np.max(sone_to_phon_tv2015(short_term_loudness)):9.1f} "
-                      f"{np.max(long_term_loudness):9.2f} "
-                      f"{np.max(sone_to_phon_tv2015(long_term_loudness)):9.1f}\n")
-        print(f"Summary saved to: {debug_summary_filename}")
-
 
     return loudness, short_term_loudness, long_term_loudness

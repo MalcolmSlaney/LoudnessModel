@@ -1121,7 +1121,7 @@ def sound_field_to_cochlea(s: jnp.ndarray, filter: jnp.ndarray) -> jnp.ndarray:
 
     # Use vstack to maintain stereo format
     out = jnp.vstack((out_left[1024:-1024], out_right[1024:-1024])).T
-    # Without filter, included in original code:
+    # Without filter, included in original MATLAB code:
     # out = jnp.vstack((jnp.zeros((1024, 2)), s, jnp.zeros((1024, 2))))
     return out
 
@@ -1152,7 +1152,7 @@ def synthesize_sound(frequency: float, duration: float, rate: int) -> jnp.ndarra
     return stereo_sound
 
 
-def main_tv2018(sound: Union[np.ndarray, jnp.ndarray],
+def compute_loudness(sound: Union[np.ndarray, jnp.ndarray],
                 db_max: float,
                 filter: Union[np.ndarray, jnp.ndarray],
                 rate) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -1160,13 +1160,14 @@ def main_tv2018(sound: Union[np.ndarray, jnp.ndarray],
     Calculate loudness according to Moore, Glasberg & Schlittenlacher (2016).
 
     Args:
-        filename_or_sound: The path to filename of the sound file, the audio data
-                itself, or synthesized sound frequency (ex. synthesize_1000khz100ms)
+        sound: Input sound data as a 2D-array
         db_max: The root-mean-square sound pressure level of a full-scale sinusoid,
                 i.e. a sinusoid whose peak amplitude is 1 in Matlab.
 
-        filter_filename: The filename of the FIR filter.
-        rate: Sampling frequency. If not provided, it will be determined from the file.
+        filter: Filter coefficients array for the transfer function representing
+               free-field (ff), diffuse-field (df), or eardrum (ed) response
+        rate: Sampling frequency. Recommended 32000. 
+       
 
     Returns:
         Calculated loudness metrics: short-term, long-term, highest loudness value
@@ -1210,8 +1211,5 @@ def main_tv2018(sound: Union[np.ndarray, jnp.ndarray],
 
     short_term_loudness = \
         short_term_loudness_left_adjusted.flatten() + short_term_loudness_right_adjusted.flatten()
-
-    short_term_loudness_np = np.asarray(short_term_loudness)
-    long_term_loudness_np = np.asarray(long_term_loudness)
 
     return loudness, short_term_loudness, long_term_loudness

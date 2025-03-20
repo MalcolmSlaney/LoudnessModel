@@ -17,18 +17,17 @@ class LoudnessModelTests(absltest.TestCase):
     """Test suite for the TVL2018 loudness model implementation."""
 
     def test_basic_example(self):
-        """Test the main_tv2018 function with a synthesized 1 kHz tone."""
+        """Test the compute_loudness function with a synthesized 1 kHz tone."""
         # Ensure results directory exists
         os.makedirs('results', exist_ok=True)
 
+        # Here, you can modify the input values into compute_loudness
         frequency = 1000  # Hz
         duration = 0.1    # seconds
         rate = 32000      # Hz
         sound = tvl.synthesize_sound(frequency, duration, rate)
-
-        # Here, you can modify the input values into tvl.main_tv2018
         db_max = 50  # Example SPL value
-        _, short_term_loudness, long_term_loudness = tvl.main_tv2018(
+        _, short_term_loudness, long_term_loudness = tvl.compute_loudness(
             sound,
             db_max,
             transfer_functions.ff_32000,
@@ -67,7 +66,7 @@ class LoudnessModelTests(absltest.TestCase):
                                          cls.sample_rate)
         cls.filter = transfer_functions.ff_32000
 
-        cls.loudness, cls.short_term_loudness, cls.long_term_loudness = tvl.main_tv2018(
+        cls.loudness, cls.short_term_loudness, cls.long_term_loudness = tvl.compute_loudness(
             cls.sound,
             cls.db_max,
             cls.filter,
@@ -154,7 +153,7 @@ class LoudnessModelTests(absltest.TestCase):
             signal = mono_signal * (peak_constraint / jnp.max(jnp.abs(mono_signal)))
             stereo = jnp.column_stack((signal, signal))
             rms = jnp.sqrt(jnp.mean(signal ** 2))
-            loudness, _, _ = tvl.main_tv2018(stereo, db_max, filter, rate=rate)
+            loudness, _, _ = tvl.compute_loudness(stereo, db_max, filter, rate=rate)
             return rms, loudness
 
         def create_signal(magnitudes, phases):
@@ -258,7 +257,7 @@ class LoudnessModelTests(absltest.TestCase):
         # Ensure results directory exists
         os.makedirs('results', exist_ok=True)
 
-        # Call main_tv2018
+        # Call compute_loudness
         long_term_loudness = self.long_term_loudness
 
         # Assert first five long-term loudness values
