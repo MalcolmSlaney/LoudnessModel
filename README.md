@@ -11,11 +11,10 @@ I. INTRODUCTION </br>
 II. GETTING STARTED </br>
 III. RUNNING THE PROGRAM </br>
 IV. OUTPUTS OF THE PROGRAM </br>
-V. INTERACTIVE DEMOS </br>
-VI. TESTING SUITE </br>
-VII. SUBROUTINES </br>
-VIII. JAX </br>
-IX. REFERENCES </br>
+V. TESTING SUITE </br>
+VI. SUBROUTINES </br>
+VII. JAX </br>
+VIII. REFERENCES </br>
 
 ## I. INTRODUCTION 
 This code implements a model of time-varying auditory loudness in Python.
@@ -56,16 +55,18 @@ According to Moore et al. (2018), the model includes "three stages with differen
 
 *    Attack time (Ta/Tal) = how quickly the system responds to increases in level
 *    Release time (Tr/Trl) = how quickly it responds to decreases in level
+*    aa/aal = attack coefficient 
+*    ar/arl = release coefficient
 
 #### Original Constants
 
-The original model used:
+Moore's 2016 model used:
 
 Short-term: Ta = 22 ms (aa = 0.045), Tr = 50 ms (ar = 0.02)
 
 Long-term: Tal = 99 ms (aal = 0.01), Trl = 2000 ms (arl = 0.0005)
 
-These were chosen to "give reasonable predictions of the way that loudness varies with duration" and "give reasonably accurate predictions of the overall loudness of sounds that are AM at low rates."
+These were chosen to "give reasonable predictions of the way that loudness varies with duration" and "give reasonably accurate predictions of the overall loudness of sounds that are AM at low rates." (Moore, 2018)
 
 #### Modified Constants
 
@@ -75,7 +76,9 @@ Short-term: Ta = 22 ms (aa = 0.045), Tr = 30 ms (ar = 0.033)
 
 Long-term: Tal = 99 ms (aal = 0.01), Trl = 751 ms (arl = 0.00133)
 
-The paper doesn't provide explicit scientific justification for using two specific time constants. The closest it comes is describing their functional purposes - short-term for individual words/notes and long-term for sentences/phrases. The time constants appear to be empirically determined rather than derived from fundamental auditory principles. Moore et al. (2018) focused on refining these values through experimental data fitting rather than explaining their theoretical basis.
+For more information on how and why these constants were modified, read section IV from the Moore et al. 2018 paper. 
+
+Short-term is described by the paper as for individual words/notes and long-term for sentences/phrases. The time constants appear to be empirically determined rather than derived from fundamental auditory principles. Moore et al. (2018) focused on refining these values through experimental data fitting rather than explaining their theoretical basis.
 
 ## II. GETTING STARTED
 
@@ -110,32 +113,22 @@ pip install jax jaxlib
 
 ## III. RUNNING THE PROGRAM
 
-The main function for loudness calculation is main_tv2018, located in the tvl2018 module. 
+The main function for loudness calculation is compute_loudness, located in the tvl2018 module. 
 
 
-The function main_tv2018 takes five parameters and two optional parameters for results.
+The function compute_loudness takes four parameters
 
 **FUNCTION SIGNATURE:**
 ```python
-def main_tv2018(
-    filename_or_sound: Union[str, np.ndarray],
+def compute_loudness(
+    sound: Union[np.ndarray, np.ndarray],
     db_max: float,
-    filter_filename: str,
+    filter: Union[np.ndarray, np.ndarray],
     rate: int = None,
-    debug_plot: bool = False,
-    debug_plot_filename: Optional[str] = None,
-    debug_summary_filename: Optional[str] = None
 ):
 ```
 
-**`filename_or_sound`**: The input sound, which can be:
-
-* A path to an audio file (e.g., 'audio.wav').
-
-* A NumPy array containing audio data (must specify rate if using this option).
-
-* A string specifying a synthesized signal in the format 'synthesize_<frequency>khz_<duration>ms' (e.g., 'synthesize_1khz_100ms') with sample rate set to 32000 hz. 
-
+**`sound`**: Input sound data as a 2D-array
 
 **`db_max`**: The root-mean-square sound pressure level (SPL) of a full-scale sinusoid (i.e., a sinusoid whose peak amplitude is 1). This allows calibration of absolute level. 
 Typical values:
@@ -144,21 +137,22 @@ Typical values:
 * **60–80 dB SPL**: Noisy environments.
 * **Default**: 50 dB SPL.
 
-**`filter_filename`**: The filename of the filter that specifies the transfer function through the outer and middle ear. 
-* `ff_32000.mat` for free-field presentation, 
+**`filter`**: The array specifies the three standard transfer functions through the outer and middle ear. 
+* `ff_32000` for free-field presentation, 
 
-* `df_32000.mat` for diffuse-field presentation,
+* `df_32000` for diffuse-field presentation,
 
-* `ed_32000.mat` for middle-ear only (when the signal is picked up at the eardrum, or headphones with a “flat” frequency response at the eardrum are used).
+* `ed_32000` for middle-ear only (when the signal is picked up at the eardrum, or headphones with a “flat” frequency response at the eardrum are used).
 
-**`rate`**: The sampling rate of the signal, can be specified. If providing your own array data for the signal, be sure to specify rate. If reading from a file or synthesizing a signal, the rate is determined automatically
+**`rate`**: The sampling rate of the signal, can be specified. If providing your own array data for the signal, be sure to specify rate. If reading from a file or synthesizing a signal, the rate is determined automatically.
 
-**`debug_plot`**: Boolean value, If true, generates and saves a plot of loudness over time.
 
-**`debug_plot_filename`**: Where to store the loudness plot, if **`debug_plot`** is True.
+<p align="center" width="100%">
+<img width="500" src="https://github.com/user-attachments/assets/3adcdf8e-ef6a-41d6-8d66-2d0ceeb1a6db">
+</p>
 
-**`debug_summary_filename`**: Where to store a textual summary of the loudness.
-
+This graph shows a visualization of each transfer function, ff for free-field, df for diffuse-field, and ed for eardrum. 
+For more information about each transfer function, go to [transfer_functions.py](transfer_functions.py)
 
 ## IV. OUTPUTS OF THE PROGRAM
 The function returns three main results:
@@ -168,65 +162,46 @@ The function returns three main results:
 
 Each is provided as an array with 1 ms intervals starting from t = 0 ms.
 
-**Optional Outputs:**
-
-**Plot:** If debug_plot is True, a plot showing instantaneous, short-term, and long-term loudness over time is saved to debug_plot_filename.
-
-**Text Summary:** If debug_summary_filename is provided, a detailed text file containing loudness metrics is saved.
-
 **EXAMPLE INPUT** 
 
 ```python
-from tvl2018 import main_tv2018
+from tvl2018 import compute_loudness
 
-filename_or_sound = 'synthesize_1khz_100ms' # this can be replaced with a user-provided audio file of similar length
-db_max = 50
-filter_filename = 'transfer functions/ff_32000.mat'
+frequency = 1000  # Hz - frequency of the tone
+duration = 0.1    # seconds - length of the tone
+rate = 32000      # Hz - sample rate 
+db_max = 50       # dB SPL - reference level
 
-loudness, short_term_loudness, long_term_loudness = main_tv2018(
-    filename_or_sound,
+# Synthesize the sound
+sound = tvl.synthesize_sound(frequency, duration, rate)
+
+# Calculate loudness 
+loudness, short_term, long_term = tvl.compute_loudness(
+    sound,
     db_max,
-    filter_filename,
-    debug_plot=True,
-    debug_plot_filename='results/loudness_plot_synthesize_1khz_100ms_50dB.png',
-    debug_summary_filename='results/loudness_summary_synthesize_1khz_100ms_50dB.txt'
+    transfer_functions.ff_32000,
+    rate
 )
-
-print(f"\nPlot saved to: results/loudness_plot_synthesize_1khz_100ms_50dB.png")
-print(f"Summary saved to: results/loudness_summary_synthesize_1khz_100ms_50dB.txt")
-
 ```
-
-Running the code above calculates loudness for the synthesized 1khz 100ms audio data. The signal is a 100-ms segment of a 1000-Hz tone with a level 10 dB below the full-scale level. If a full-scale sinusoid has a level of 50 dB SPL (as specified by the “50” in the example above), the signal in the example wav file would have a level of 40 dB SPL and the outputs show the loudness of a 1-kHz pure tone with a duration of 100 ms and a level of 40 dB SPL. To calculate the loudness of a 1-kHz pure tone with a duration of 100 ms and a level of X dB SPL, specify the full-scale level as X+10. 
-
-**EXAMPLE OUTPUTS:** </br>
-With the arguments above the main_tv2018 function creates two files: a textual summary and a summary plot:
-
-[Download the generated text file here.](results/synthesize_1khz_100ms_50dB_calibration_level_TVL_2018.txt)
-
-![Loudness Plot](results/synthesize_1khz_100ms_50dB_loudness_plot.png)
-
-## V. INTERACTIVE DEMOS
+## INTERACTIVE DEMOS
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1JQcklNVzuwJVy3fBco64IlO87RQ1WeH5?usp=sharing)
 
-These demos provide interactive demonstrations of loudness perception using the TVL2018 model. Each demo highlights different aspects of auditory perception:
+These demos provide interactive demonstrations of loudness perception using the TVL2018 model. Each demo highlights different aspects of the program. It provides plots and statistics on analyzed audio data. 
 
 * Demo 1: Basic Loudness Analysis - Understanding fundamental loudness measurements
 
 * Demo 2: Real-World Sound Loudness Analysis - Analyzing loudness in real-world audio files
 
-* Demo 3: Phase Optimization - How phase relationships affect perceived loudness
-
-* Demo 4: Parameter Effects - The impact of frequency, duration, and level
+* Demo 3: Parameter Effects - The impact of frequency, duration, and level
 
 
-## VI. TESTING SUITE
+## V. TESTING SUITE
 
 This test suite validates the implementation of the TVL2018 loudness model by covering a general overall test, precision tests, and individual utility functions.
 
 ### Basic Tests
 
-- **`test_basic_example`**: Tests the `main_tv2018` function with a 100ms synthesized 1 kHz tone at 50 dB SPL and 32k sample rate with free field transform, checking short-term and long-term loudness calculations. You can change inputs here to get different plots and summary files.
+- **`test_basic_example`**: Tests the `compute_loudness` function with a 100ms synthesized 1 kHz tone at 50 dB SPL and 32k sample rate with free field transform, checking short-term and long-term loudness calculations. You can change inputs here to get different plots and summary files.
 
 - **`test_peak_constrained_power_optimization`**: Validates and demonstrates that phase adjustments can increase power/loudness while maintaining peak amplitude constraints. Tests different phase configurations (cosine phase baseline, all-pass filter, random phases) to verify improvements in RMS and loudness while keeping peak amplitude constant.
 
@@ -274,14 +249,16 @@ Ensure all dependencies are installed and the `tvl2018` module is accessible. Th
 
 
 
-## VII. SUBROUTINES
+## VI. SUBROUTINES
 
 You will find many useful subroutines in the main directory and subdirectory ‘functions’. They may be used to calculate excitation patterns, perform a Fast Fourier Transform (FFT), convert sone to phon or Hz to Cam (the units of the ERBN-number scale), calculate the
 equivalent rectangular bandwidth of the auditory filter, calculate binaural inhibition, and implement automatic gain circuits, among other things.
 
-## VIII. JAX
+## VII. JAX
 
-A JAX version of this model is also available. To use this code, import 
+The Numpy code was translated to JAX and runs. Unfortunately it does not compile as there are several portions of the implementation that are [not pure](https://docs.jax.dev/en/latest/notebooks/Common_Gotchas_in_JAX.html). We want to fix these details, but also welcome contributions from the community.
+
+To use this code in JAX, import 
 ```python
 import tvl2018_jax as tvl
 ```
@@ -294,7 +271,7 @@ python tvl2018_jax_test.py
 
 
 
-## IX. REFERENCES
+## VIII. REFERENCES
 
 Glasberg, B. R., and Moore, B. C. J. (2006). "Prediction of absolute thresholds 
 and equal-loudness contours using a modified loudness model," J. Acoust. Soc. Am. 120, 585-588 

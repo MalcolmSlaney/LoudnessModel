@@ -6,7 +6,7 @@ import numpy as np
 The ISO532-2 paper has this to say about the three transfer functions included 
 here:
 
-7.2.2 Free field and diffuse field transfer functions for sound picked up by a 
+"7.2.2 Free field and diffuse field transfer functions for sound picked up by a 
 single microphone
 
 These transfer functions are applicable when the sound is picked up via a 
@@ -18,7 +18,7 @@ functions.
 The first, applicable to free field (ff) listening with frontal incidence of the
 sound source, is specified in column 2 of Table 1. The second, applicable to 
 listening in a diffuse field, is specified in column 3 of Table 1. The transfer 
-functions represent the mean for adult humans[19-21].
+functions represent the mean for adult humans.
 
 The diffuse field (df) transfer function can also be used for sounds presented 
 via earphones that are designed to have a diffuse field response (see 7.2.3).
@@ -28,7 +28,21 @@ predictions of the equal loudness contours given in ISO 226:2003 and the
 absolute threshold values given in ISO 389-7:2005. 
 
 It is acknowledged that these transfer functions do not comply with those 
-specified in ISO 11904-1:2002.
+specified in ISO 11904-1:2002."
+
+The paper also has this to say about ed_32000, or the middle-ear transfer function:
+
+The transmission of sound through the middle ear from the tympanic membrane to the oval window
+(the cochlea) is taken into account by a middle ear transfer function specified in column 4 of Table 1.
+The shape of the function represents the difference between the sound pressure level in the cochlea
+and the sound pressure level at the tympanic membrane. The whole function is scaled so that an input
+signal consisting of a 1 000 Hz sinusoid presented in a free field with frontal incidence at a sound
+pressure level of 0 dB leads to a sound pressure level at the cochlea of 0 dB. The interpolation procedure
+described in 7.2.6 is used to determine values at intermediate frequencies. The values for frequencies
+above 12 500 Hz are based on extrapolation and have not been validated, so they are shown in italics
+in Table 1. They are included for the user who wishes to predict the loudness of sounds with frequency
+components above 12 500 Hz. The end result of this stage is a specification of the spectrum of the
+pressure variation applied to the cochlea.
 """
 
 # Diffuse field transfer function
@@ -1061,7 +1075,7 @@ df_32000 = np.array([
 
 # Created from LoudnessModel/transfer_functions/ed_32000.mat
 
-# ??? field transfer function
+# Middle-ear transfer function
 ed_32000 = np.array([
     -3.2505878004054887e-08, -3.287291791016491e-08, -3.8671111178845556e-08, -3.38288794349589e-08, 
     -5.245768177408164e-08, -4.40615908419177e-08, -3.981347632028548e-08, -5.037654786235391e-08, 
