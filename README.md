@@ -137,15 +137,22 @@ Typical values:
 * **60–80 dB SPL**: Noisy environments.
 * **Default**: 50 dB SPL.
 
-**`filter`**: The array specifies the transfer function through the outer and middle ear. 
+**`filter`**: The array specifies the three standard transfer functions through the outer and middle ear. 
 * `ff_32000` for free-field presentation, 
 
 * `df_32000` for diffuse-field presentation,
 
-* `ed_32000` for middle-ear only (when the signal is picked up at the eardrum, or headphones with a “flat” frequency response at the eardrum are used). 
+* `ed_32000` for middle-ear only (when the signal is picked up at the eardrum, or headphones with a “flat” frequency response at the eardrum are used).
 
-**`rate`**: The sampling rate of the signal, can be specified. If providing your own array data for the signal, be sure to specify rate. If reading from a file or synthesizing a signal, the rate is determined automatically
+**`rate`**: The sampling rate of the signal, can be specified. If providing your own array data for the signal, be sure to specify rate. If reading from a file or synthesizing a signal, the rate is determined automatically.
 
+
+<p align="center" width="100%">
+<img width="500" src="https://github.com/user-attachments/assets/3adcdf8e-ef6a-41d6-8d66-2d0ceeb1a6db">
+</p>
+
+This graph shows a visualization of each transfer function, ff for free-field, df for diffuse-field, and ed for eardrum. 
+For more information about each transfer function, go to [transfer_functions.py](transfer_functions.py)
 
 ## IV. OUTPUTS OF THE PROGRAM
 The function returns three main results:
